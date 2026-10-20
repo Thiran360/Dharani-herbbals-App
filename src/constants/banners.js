@@ -1,0 +1,73 @@
+/**
+ * Authentic Hero Banners from Dharani Herbbals
+ */
+
+export const HERO_BANNERS = [
+  {
+    id: 'b1',
+    title: 'Chemparuthi Herbal Hair Care',
+    titleTa: 'செம்பருத்தி மூலிகை கூந்தல் பராமரிப்பு',
+    subtitle: '100% Natural • Root Nourishing • Chemical Free',
+    subtitleTa: '100% இயற்கை • வேர்களுக்கு புத்துணர்ச்சி',
+    image: require('../assets/hair_banner_transparent-C6ZbZnzF.png'),
+    bgGradient: ['#2e7d32', '#1b5e20'],
+    accentColor: '#4ade80',
+    categoryName: 'Hair',
+    categoryId: 5,
+    tag: 'BESTSELLER',
+  },
+  {
+    id: 'b2',
+    title: 'Handcrafted Kuppaimeni Soaps',
+    titleTa: 'இயற்கை குப்பைமேனி மூலிகை சோப்பு',
+    subtitle: 'Pure Herbs • Radiant Glow • Handcrafted with Love',
+    subtitleTa: 'தூய மூலிகைகள் • பளபளப்பான சருமம்',
+    image: require('../assets/body_soap_transparent-BNlIXnY2.png'),
+    bgGradient: ['#15803d', '#14532d'],
+    accentColor: '#86efac',
+    categoryName: 'Body',
+    categoryId: 4,
+    tag: '100% ORGANIC',
+  },
+  {
+    id: 'b3',
+    title: 'Traditional Pirandai Pickle & Foods',
+    titleTa: 'பாரம்பரிய பிரண்டை ஊறுகாய்',
+    subtitle: 'Authentic Village Taste • Pure Digestive Wellness',
+    subtitleTa: 'பாரம்பரிய சுவை • செரிமான ஆரோக்கியம்',
+    image: require('../assets/pirandai_pickle_transparent_v2-CmtHv3jP.png'),
+    bgGradient: ['#c2410c', '#7c2d12'],
+    accentColor: '#fdba74',
+    categoryName: 'Traditional Food',
+    categoryId: 9,
+    tag: 'HERBAL FOOD',
+  },
+  {
+    id: 'b4',
+    title: 'Sprouted Multigrain Health Mix',
+    titleTa: 'முளைக்கட்டிய சத்துமாவு',
+    subtitle: 'Nutrient-packed superfood for complete family wellness',
+    subtitleTa: 'முழுமையான குடும்ப ஆரோக்கியம்',
+    image: require('../assets/sathu_maavu_transparent-BQkYbCxR.png'),
+    bgGradient: ['#b45309', '#78350f'],
+    accentColor: '#fde047',
+    categoryName: 'Health & Wellness',
+    categoryId: 7,
+    tag: 'IMMUNITY BOOSTER',
+  },
+  {
+    id: 'b5',
+    title: 'Aloe Vera & Wild Turmeric Face Pack',
+    titleTa: 'கற்றாழை & கஸ்தூரி மஞ்சள் பேஸ்பேக்',
+    subtitle: 'Natural glow and youthful radiance with pure Siddha herbs',
+    subtitleTa: 'இயற்கை அழகு • முகம் பொலிவு',
+    image: require('../assets/aloe_vera_face_pack_transparent-pX6HUvSp.png'),
+    bgGradient: ['#047857', '#064e3b'],
+    accentColor: '#6ee7b7',
+    categoryName: 'Face',
+    categoryId: 3,
+    tag: 'HERBAL GLOW',
+  },
+];
+
+export default HERO_BANNERS;
