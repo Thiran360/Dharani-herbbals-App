@@ -99,6 +99,19 @@ export const CheckoutScreen = ({ navigation }) => {
     };
   }, [activeTxnId, activeGid, activeOrderId, payglocalModalVisible]);
 
+  // Auto-poll payment checkin while modal is open
+  useEffect(() => {
+    let timer = null;
+    if (payglocalModalVisible && (activeGid || activeTxnId) && !isVerifying) {
+      timer = setTimeout(() => {
+        verifyTransaction({ gid: activeGid, txnId: activeTxnId, orderId: activeOrderId });
+      }, 4000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [payglocalModalVisible, activeGid, activeTxnId, activeOrderId, isVerifying]);
+
   const handlePaymentDeepLink = async url => {
     try {
       const queryString = url.split('?')[1];
@@ -127,10 +140,21 @@ export const CheckoutScreen = ({ navigation }) => {
     let targetOrderId = activeOrderId;
 
     if (typeof queryParams === 'string') {
-      targetTxn = queryParams;
+      targetGid = queryParams;
     } else if (queryParams && typeof queryParams === 'object') {
-      if (queryParams.txnId) targetTxn = queryParams.txnId;
-      if (queryParams.gid) targetGid = queryParams.gid;
+      if (queryParams.txnId || queryParams.merchantTxnId) {
+        targetTxn = queryParams.txnId || queryParams.merchantTxnId;
+      }
+      if (
+        queryParams.gid ||
+        queryParams.gateway_transaction_id ||
+        queryParams.gatewayTransactionId
+      ) {
+        targetGid =
+          queryParams.gid ||
+          queryParams.gateway_transaction_id ||
+          queryParams.gatewayTransactionId;
+      }
       if (queryParams.orderId) targetOrderId = queryParams.orderId;
     }
 
@@ -141,6 +165,7 @@ export const CheckoutScreen = ({ navigation }) => {
 
     try {
       const result = await api.verifyPayGlocalPayment({
+        gateway_transaction_id: targetGid,
         gid: targetGid,
         merchantTxnId: targetTxn,
         orderId: targetOrderId,
