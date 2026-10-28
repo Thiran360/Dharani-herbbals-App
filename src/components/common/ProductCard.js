@@ -3,7 +3,7 @@
  * Luxury botanical card with subtle scale animation and animated wishlist feedback
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, memo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
@@ -18,15 +19,21 @@ import { Icon } from './Icons';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import { formatProductSize, isArppuShampoo, isAloeVeraShampoo, isKadalaiMittai } from '../../utils/formatters';
+import { getLocalizedProductName } from '../../utils/localization';
+import { getOptimizedImageSource, getProductThumbnail } from '../../utils/imageOptimizer';
 
-export const ProductCard = ({ product, style, width }) => {
+const ProductCardComponent = ({ product, style, width }) => {
   const navigation = useNavigation();
   const { addToCart, cartItems } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { isTamil } = useLanguage();
+  const { isTamil, t, language } = useLanguage();
+  const { isAuthenticated, user, isGuest } = useAuth();
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const heartScale = useRef(new Animated.Value(1)).current;
+  const [imageError, setImageError] = useState(false);
 
   if (!product) return null;
 
@@ -34,21 +41,35 @@ export const ProductCard = ({ product, style, width }) => {
   const cartItem = cartItems.find(item => item.id === product.id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
 
-  // Price formatting
-  const price = typeof product.price === 'string'
+  // Price formatting & Offer rules
+  const isArppu = isArppuShampoo(product);
+  const isAloeVera = isAloeVeraShampoo(product);
+
+  let price = typeof product.price === 'string'
     ? parseFloat(product.price.replace(/[^\d.]/g, ''))
     : parseFloat(product.price) || 0;
 
-  const mrp = typeof product.mrp === 'string'
+  let mrp = typeof product.mrp === 'string'
     ? parseFloat(product.mrp.replace(/[^\d.]/g, ''))
     : typeof product.originalPrice === 'string'
     ? parseFloat(product.originalPrice.replace(/[^\d.]/g, ''))
     : parseFloat(product.mrp || product.originalPrice) || 0;
 
+  // Requirements 3 & 4:
+  // Arppu Shampoo & Aloe Vera Shampoo: Sell at ₹65 only.
+  // Remove 50% & 19% offer badges and crossed-out old prices.
+  if (isArppu || isAloeVera) {
+    price = 65;
+    mrp = 65;
+  }
+
   const hasDiscount = mrp > price;
   const discountPercent = hasDiscount
     ? Math.round(((mrp - price) / mrp) * 100)
     : 0;
+
+  // Requirement 2 & 5: Format weight with 'G' (no 'GM'), exclude Kadalai Mittai, display beside price
+  const formattedSize = isKadalaiMittai(product) ? '' : formatProductSize(product);
 
   const rating = parseFloat(product.rating) || 4.8;
   const reviews = parseInt(product.reviews, 10) || 16;
@@ -58,6 +79,12 @@ export const ProductCard = ({ product, style, width }) => {
   };
 
   const handleAddToCart = () => {
+    if (!isAuthenticated || !user?.id || isGuest) {
+      navigation.navigate('LoginScreen', {
+        pendingAction: { type: 'ADD_TO_CART', product, quantity: 1 },
+      });
+      return;
+    }
     addToCart(product, 1);
   };
 
@@ -98,8 +125,9 @@ export const ProductCard = ({ product, style, width }) => {
     }).start();
   };
 
-  const imageUri = product.image && product.image.startsWith('http')
-    ? { uri: product.image }
+  const rawImage = getProductThumbnail(product);
+  const imageSource = !imageError && rawImage
+    ? getOptimizedImageSource(rawImage)
     : require('../../assets/logo.png');
 
   return (
@@ -121,20 +149,21 @@ export const ProductCard = ({ product, style, width }) => {
         {/* Image Container with Studio Herbal Backdrop */}
         <View style={styles.imageContainer}>
           <Image
-            source={imageUri}
+            source={imageSource}
             style={styles.image}
             resizeMode="contain"
             defaultSource={require('../../assets/logo.png')}
+            onError={() => setImageError(true)}
           />
 
           {/* Discount / New Badge */}
           {hasDiscount && discountPercent > 0 ? (
             <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{discountPercent}% OFF</Text>
+              <Text style={styles.discountText}>{discountPercent}% {isTamil ? 'தள்ளுபடி' : 'OFF'}</Text>
             </View>
           ) : product.is_new ? (
             <View style={[styles.discountBadge, styles.newBadge]}>
-              <Text style={styles.discountText}>HERBAL NEW</Text>
+              <Text style={styles.discountText}>{isTamil ? 'புதியது' : 'HERBAL NEW'}</Text>
             </View>
           ) : null}
 
@@ -157,28 +186,10 @@ export const ProductCard = ({ product, style, width }) => {
 
         {/* Info Container */}
         <View style={styles.infoContainer}>
-          {/* Unit / Weight Pill */}
-          {product.weight_volume || product.unit ? (
-            <View style={styles.unitPill}>
-              <Text style={styles.unitText}>
-                {product.weight_volume} {product.unit}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.unitPillPlaceholder} />
-          )}
-
-          {/* Product Name */}
+          {/* Localized Product Name */}
           <Text style={styles.name} numberOfLines={2}>
-            {product.name}
+            {getLocalizedProductName(product, language)}
           </Text>
-
-          {/* Tamil Name */}
-          {product.tamil_name && product.tamil_name !== product.name ? (
-            <Text style={styles.tamilName} numberOfLines={1}>
-              {product.tamil_name}
-            </Text>
-          ) : null}
 
           {/* Rating Row */}
           <View style={styles.ratingRow}>
@@ -191,6 +202,9 @@ export const ProductCard = ({ product, style, width }) => {
           <View style={styles.bottomRow}>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>₹{price.toFixed(0)}</Text>
+              {formattedSize ? (
+                <Text style={styles.priceWeight}>({formattedSize})</Text>
+              ) : null}
               {hasDiscount ? (
                 <Text style={styles.mrp}>₹{mrp.toFixed(0)}</Text>
               ) : null}
@@ -205,9 +219,11 @@ export const ProductCard = ({ product, style, width }) => {
               activeOpacity={0.8}
             >
               {quantityInCart > 0 ? (
-                <Text style={styles.addBtnTextActive}>{quantityInCart} in Cart</Text>
+                <Text style={styles.addBtnTextActive}>
+                  {isTamil ? `${quantityInCart} கூடையில்` : `${quantityInCart} in Cart`}
+                </Text>
               ) : (
-                <Text style={styles.addBtnText}>+ Add</Text>
+                <Text style={styles.addBtnText}>{isTamil ? '+ சேர்' : '+ Add'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -219,9 +235,12 @@ export const ProductCard = ({ product, style, width }) => {
 
 const styles = StyleSheet.create({
   cardWrapper: {
+    width: '100%',
     marginBottom: SPACING.md,
   },
   card: {
+    flex: 1,
+    height: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
@@ -231,7 +250,8 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: '100%',
-    height: 155,
+    aspectRatio: 1.05,
+    maxHeight: 180,
     backgroundColor: '#F9F7F4', // Warm ivory studio backdrop
     justifyContent: 'center',
     alignItems: 'center',
@@ -277,31 +297,16 @@ const styles = StyleSheet.create({
   infoContainer: {
     padding: SPACING.md,
     backgroundColor: '#FFFFFF',
-  },
-  unitPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-    marginBottom: 4,
-  },
-  unitPillPlaceholder: {
-    height: 16,
-  },
-  unitText: {
-    fontSize: 9.5,
-    color: '#666666',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   name: {
     fontSize: 13,
     fontWeight: '700',
     color: '#14231A',
     lineHeight: 18,
-    height: 36,
+    minHeight: 36,
+    flexShrink: 1,
   },
   tamilName: {
     fontSize: 11,
@@ -329,17 +334,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: SPACING.sm + 2,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   price: {
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: '800',
     color: '#1B4D3E',
     letterSpacing: 0.2,
+  },
+  priceWeight: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#5A6E62',
   },
   mrp: {
     fontSize: 11,
@@ -348,11 +362,12 @@ const styles = StyleSheet.create({
   },
   addBtn: {
     backgroundColor: '#1B4D3E',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: RADIUS.md,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 28,
   },
   addBtnActive: {
     backgroundColor: '#0D2818',
@@ -369,5 +384,6 @@ const styles = StyleSheet.create({
   },
 });
 
+export const ProductCard = memo(ProductCardComponent);
 export default ProductCard;
 

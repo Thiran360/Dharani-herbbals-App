@@ -1,5 +1,6 @@
 /**
  * Authentic Hero Banners from Dharani Herbbals
+ * Clean, bright, premium white & soft mint-green theme
  */
 
 export const HERO_BANNERS = [
@@ -10,10 +11,11 @@ export const HERO_BANNERS = [
     subtitle: '100% Natural • Root Nourishing • Chemical Free',
     subtitleTa: '100% இயற்கை • வேர்களுக்கு புத்துணர்ச்சி',
     image: require('../assets/hair_banner_transparent-C6ZbZnzF.png'),
-    bgGradient: ['#2e7d32', '#1b5e20'],
-    accentColor: '#4ade80',
+    drawableName: 'src_assets_hair_banner_transparentc6zbznzf',
+    bgGradient: ['#CEE5D6', '#D6EADF'],
+    accentColor: '#14532D',
     categoryName: 'Hair',
-    categoryId: 5,
+    categoryId: 2,
     tag: 'BESTSELLER',
   },
   {
@@ -23,8 +25,9 @@ export const HERO_BANNERS = [
     subtitle: 'Pure Herbs • Radiant Glow • Handcrafted with Love',
     subtitleTa: 'தூய மூலிகைகள் • பளபளப்பான சருமம்',
     image: require('../assets/body_soap_transparent-BNlIXnY2.png'),
-    bgGradient: ['#15803d', '#14532d'],
-    accentColor: '#86efac',
+    drawableName: 'src_assets_body_soap_transparentbnlixny2',
+    bgGradient: ['#CAE6D9', '#D3EBDD'],
+    accentColor: '#15803D',
     categoryName: 'Body',
     categoryId: 4,
     tag: '100% ORGANIC',
@@ -36,10 +39,11 @@ export const HERO_BANNERS = [
     subtitle: 'Authentic Village Taste • Pure Digestive Wellness',
     subtitleTa: 'பாரம்பரிய சுவை • செரிமான ஆரோக்கியம்',
     image: require('../assets/pirandai_pickle_transparent_v2-CmtHv3jP.png'),
-    bgGradient: ['#c2410c', '#7c2d12'],
-    accentColor: '#fdba74',
-    categoryName: 'Traditional Food',
-    categoryId: 9,
+    drawableName: 'src_assets_pirandai_pickle_transparent_v2cmthv3jp',
+    bgGradient: ['#D3E7D3', '#DFEDDC'],
+    accentColor: '#1C643B',
+    categoryName: 'Food',
+    categoryId: 5,
     tag: 'HERBAL FOOD',
   },
   {
@@ -49,8 +53,9 @@ export const HERO_BANNERS = [
     subtitle: 'Nutrient-packed superfood for complete family wellness',
     subtitleTa: 'முழுமையான குடும்ப ஆரோக்கியம்',
     image: require('../assets/sathu_maavu_transparent-BQkYbCxR.png'),
-    bgGradient: ['#b45309', '#78350f'],
-    accentColor: '#fde047',
+    drawableName: 'src_assets_sathu_maavu_transparentbqkybcxr',
+    bgGradient: ['#CCE5DB', '#D7ECE0'],
+    accentColor: '#1B5E3C',
     categoryName: 'Health & Wellness',
     categoryId: 7,
     tag: 'IMMUNITY BOOSTER',
@@ -62,10 +67,11 @@ export const HERO_BANNERS = [
     subtitle: 'Natural glow and youthful radiance with pure Siddha herbs',
     subtitleTa: 'இயற்கை அழகு • முகம் பொலிவு',
     image: require('../assets/aloe_vera_face_pack_transparent-pX6HUvSp.png'),
-    bgGradient: ['#047857', '#064e3b'],
-    accentColor: '#6ee7b7',
-    categoryName: 'Face',
-    categoryId: 3,
+    drawableName: 'src_assets_aloe_vera_face_pack_transparentpx6huvsp',
+    bgGradient: ['#C6E4D7', '#D2EADB'],
+    accentColor: '#0F6B4E',
+    categoryName: 'Skin',
+    categoryId: 6,
     tag: 'HERBAL GLOW',
   },
 ];

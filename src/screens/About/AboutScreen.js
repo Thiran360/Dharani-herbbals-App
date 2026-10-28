@@ -19,12 +19,12 @@ import { COMPANY_STATS, CORE_VALUES } from '../../constants/config';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const AboutScreen = ({ navigation }) => {
-  const { isTamil } = useLanguage();
+  const { isTamil, t } = useLanguage();
 
   return (
     <View style={styles.container}>
       <Header
-        title={isTamil ? 'எங்களை பற்றி' : 'About Dharani Herbbals'}
+        title={t('aboutDharani')}
         showBack={true}
         showLogo={false}
       />
@@ -33,11 +33,11 @@ export const AboutScreen = ({ navigation }) => {
         {/* Luxury Hero Banner */}
         <View style={styles.heroBanner}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>TIME-HONORED SIDDHA HERITAGE</Text>
+            <Text style={styles.badgeText}>{t('timeHonoredHeritage')}</Text>
           </View>
-          <Text style={styles.heroTitle}>Rooted in Nature,{'\n'}Crafted with Wisdom</Text>
+          <Text style={styles.heroTitle}>{t('rootedInNature')}</Text>
           <Text style={styles.heroSubtitle}>
-            Your trusted sanctuary for authentic botanical wellness and traditional herbal health formulations from Tamil Nadu.
+            {t('aboutBannerSub')}
           </Text>
         </View>
 
@@ -47,9 +47,9 @@ export const AboutScreen = ({ navigation }) => {
             <View style={styles.iconCircle}>
               <Icon name="shield" size={24} color="#1B4D3E" />
             </View>
-            <Text style={styles.cardTitle}>Our Sacred Mission</Text>
+            <Text style={styles.cardTitle}>{t('ourMission')}</Text>
             <Text style={styles.cardDesc}>
-              To make traditional Siddha and Ayurvedic botanical wisdom accessible to every home through pure, ethical, and meticulously crafted wellness remedies.
+              {t('ourMissionDesc')}
             </Text>
           </View>
 
@@ -57,21 +57,21 @@ export const AboutScreen = ({ navigation }) => {
             <View style={[styles.iconCircle, { backgroundColor: '#FEF9EE' }]}>
               <Icon name="sparkles" size={24} color="#C8963E" />
             </View>
-            <Text style={styles.cardTitle}>Our Living Heritage</Text>
+            <Text style={styles.cardTitle}>{t('ourHeritage')}</Text>
             <Text style={styles.cardDesc}>
-              Beginning in 2004 with deep research into ancient Siddha manuscripts, Dharani Herbbals was formally established in 2007 at Punjai Puliampatti near Sathyamangalam, Tamil Nadu.
+              {t('ourHeritageDesc')}
             </Text>
           </View>
         </View>
 
         {/* Statistics Grid */}
         <View style={styles.statsContainer}>
-          <Text style={styles.statsSectionTitle}>Our Journey in Numbers</Text>
+          <Text style={styles.statsSectionTitle}>{t('journeyInNumbers')}</Text>
           <View style={styles.statsGrid}>
             {COMPANY_STATS.map((stat, idx) => (
               <View key={`stat-ab-${idx}`} style={styles.statBox}>
                 <Text style={styles.statNum}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
+                <Text style={styles.statLabel}>{isTamil ? (stat.labelTa || stat.label) : stat.label}</Text>
               </View>
             ))}
           </View>
@@ -79,8 +79,8 @@ export const AboutScreen = ({ navigation }) => {
 
         {/* Core Values */}
         <View style={styles.valuesSection}>
-          <Text style={styles.sectionHeaderTitle}>Our Guiding Values</Text>
-          <Text style={styles.sectionHeaderSub}>These enduring principles guide every herbal harvest and formulation.</Text>
+          <Text style={styles.sectionHeaderTitle}>{t('guidingValues')}</Text>
+          <Text style={styles.sectionHeaderSub}>{t('guidingValuesSub')}</Text>
 
           {CORE_VALUES.map((val, idx) => (
             <View key={`val-ab-${idx}`} style={styles.valueRow}>
@@ -88,8 +88,8 @@ export const AboutScreen = ({ navigation }) => {
                 <Icon name={val.icon} size={18} color="#1B4D3E" />
               </View>
               <View style={styles.valueContent}>
-                <Text style={styles.valueTitle}>{val.title}</Text>
-                <Text style={styles.valueDesc}>{val.description}</Text>
+                <Text style={styles.valueTitle}>{isTamil ? (val.titleTa || val.title) : val.title}</Text>
+                <Text style={styles.valueDesc}>{isTamil ? (val.descriptionTa || val.description) : val.description}</Text>
               </View>
             </View>
           ))}
@@ -97,37 +97,37 @@ export const AboutScreen = ({ navigation }) => {
 
         {/* What Makes Us Different */}
         <View style={styles.diffSection}>
-          <Text style={styles.sectionHeaderTitle}>The Dharani Difference</Text>
-          <Text style={styles.sectionHeaderSub}>Our unwavering dedication to purity and authenticity.</Text>
+          <Text style={styles.sectionHeaderTitle}>{t('dharaniDifference')}</Text>
+          <Text style={styles.sectionHeaderSub}>{t('dharaniDifferenceSub')}</Text>
 
           <View style={styles.diffList}>
             <View style={styles.diffItem}>
-              <Text style={styles.diffItemTitle}>🌿 100% Pure Botanical Ingredients</Text>
-              <Text style={styles.diffItemDesc}>Formulated with wild-harvested herbs, zero harsh chemicals, and no artificial parabens.</Text>
+              <Text style={styles.diffItemTitle}>{isTamil ? '🌿 100% தூய இயற்கை மூலிகைகள்' : '🌿 100% Pure Botanical Ingredients'}</Text>
+              <Text style={styles.diffItemDesc}>{isTamil ? 'காடுகளில் இயற்கையாகப் பறிக்கப்பட்ட மூலிகைகள், ரசாயனங்கள் மற்றும் பாதுகாப்பற்ற பொருட்கள் அற்றது.' : 'Formulated with wild-harvested herbs, zero harsh chemicals, and no artificial parabens.'}</Text>
             </View>
 
             <View style={styles.diffItem}>
-              <Text style={styles.diffItemTitle}>👨‍⚕️ Traditional Siddha Validation</Text>
-              <Text style={styles.diffItemDesc}>Crafted following time-tested formulations preserved across generations in Tamil Nadu.</Text>
+              <Text style={styles.diffItemTitle}>{isTamil ? '👨‍⚕️ பாரம்பரிய சித்த மருத்துவ முறை' : '👨‍⚕️ Traditional Siddha Validation'}</Text>
+              <Text style={styles.diffItemDesc}>{isTamil ? 'தமிழ்நாட்டின் தலைமுறை தலைமுறையாக போற்றப்படும் மருத்துவ நூல்களின் வழிமுறைப்படி தயாரிக்கப்படுகிறது.' : 'Crafted following time-tested formulations preserved across generations in Tamil Nadu.'}</Text>
             </View>
 
             <View style={styles.diffItem}>
-              <Text style={styles.diffItemTitle}>✨ 600,000+ Families Served</Text>
-              <Text style={styles.diffItemDesc}>Customer trust and wellness inspire every small-batch preparation we brew.</Text>
+              <Text style={styles.diffItemTitle}>{isTamil ? '✨ 6,00,000+ குடும்பங்களின் நம்பிக்கை' : '✨ 600,000+ Families Served'}</Text>
+              <Text style={styles.diffItemDesc}>{isTamil ? 'வாடிக்கையாளர்களின் நலவாழ்வும் நம்பிக்கையுமே எங்கள் தூய தயாரிப்புகளின் அடிப்படை.' : 'Customer trust and wellness inspire every small-batch preparation we brew.'}</Text>
             </View>
 
             <View style={styles.diffItem}>
-              <Text style={styles.diffItemTitle}>🌱 Sustainable & Ethical Harvest</Text>
-              <Text style={styles.diffItemDesc}>Environmentally conscious sourcing directly from regional agricultural farmers.</Text>
+              <Text style={styles.diffItemTitle}>{isTamil ? '🌱 நிலையான & நேர்மையான விவசாயம்' : '🌱 Sustainable & Ethical Harvest'}</Text>
+              <Text style={styles.diffItemDesc}>{isTamil ? 'சுற்றுச்சூழல் விழிப்புணர்வுடன் தமிழக விவசாயிகளிடமிருந்து நேரடியாக சேகரிக்கப்படுகிறது.' : 'Environmentally conscious sourcing directly from regional agricultural farmers.'}</Text>
             </View>
           </View>
         </View>
 
         {/* Call to action */}
         <View style={styles.ctaBox}>
-          <Text style={styles.ctaTitle}>Experience Pure Natural Care</Text>
+          <Text style={styles.ctaTitle}>{t('experiencePureCare')}</Text>
           <Text style={styles.ctaDesc}>
-            Join thousands of satisfied patrons embracing authentic Dharani Herbbals in their daily wellness routine.
+            {t('experiencePureCareSub')}
           </Text>
 
           <View style={styles.ctaBtnRow}>
@@ -136,7 +136,7 @@ export const AboutScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('MainTabs', { screen: 'CategoriesTab' })}
               activeOpacity={0.88}
             >
-              <Text style={styles.ctaPrimaryBtnText}>Explore Collections ›</Text>
+              <Text style={styles.ctaPrimaryBtnText}>{t('exploreCollections')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -144,7 +144,7 @@ export const AboutScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('ContactScreen')}
               activeOpacity={0.8}
             >
-              <Text style={styles.ctaSecondaryBtnText}>Contact Team</Text>
+              <Text style={styles.ctaSecondaryBtnText}>{t('contactTeam')}</Text>
             </TouchableOpacity>
           </View>
         </View>

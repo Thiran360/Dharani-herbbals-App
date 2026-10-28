@@ -2,19 +2,32 @@
  * Wishlist Screen for Dharani Herbbals
  */
 
-import React from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, FlatList, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { ProductCard } from '../../components/common/ProductCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { COLORS, SPACING } from '../../constants/theme';
 import { useWishlist } from '../../context/WishlistContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { prefetchImages } from '../../utils/imageOptimizer';
 
 export const WishlistScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const numColumns = width >= 640 ? 3 : 2;
   const { wishlist } = useWishlist();
+  const { t } = useLanguage();
+
+  useEffect(() => {
+    if (wishlist && wishlist.length > 0) {
+      prefetchImages(wishlist.slice(0, 6).map(p => p.image));
+    }
+  }, [wishlist]);
+
+  const columnWidthPercent = `${(100 / numColumns).toFixed(2)}%`;
 
   const renderProductItem = ({ item }) => (
-    <View style={styles.gridItem}>
+    <View style={[styles.gridItem, { maxWidth: columnWidthPercent }]}>
       <ProductCard product={item} />
     </View>
   );
@@ -22,25 +35,30 @@ export const WishlistScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Header
-        title={`My Wishlist (${wishlist.length})`}
+        title={`${t('myWishlist')} (${wishlist.length})`}
         showBack={true}
         showWishlist={false}
         showLogo={false}
       />
 
       <FlatList
+        key={`wish-grid-${numColumns}`}
         data={wishlist}
         keyExtractor={item => `wish-${item.id}`}
         renderItem={renderProductItem}
-        numColumns={2}
+        numColumns={numColumns}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
         ListEmptyComponent={
           <EmptyState
             icon="heart"
-            title="Your Wishlist is Empty"
-            subtitle="Save your favorite herbal shampoos, soaps, and health mixes here for easy access."
-            buttonText="Explore Catalogue"
+            title={t('emptyWishlistTitle')}
+            subtitle={t('emptyWishlistSub')}
+            buttonText={t('exploreCatalogue')}
             onButtonPress={() => navigation.navigate('MainTabs', { screen: 'CategoriesTab' })}
           />
         }
@@ -59,7 +77,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
   gridItem: {
-    flex: 1 / 2,
+    flex: 1,
+    maxWidth: '50%',
     padding: SPACING.xs,
   },
 });

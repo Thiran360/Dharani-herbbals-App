@@ -7,9 +7,11 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/common/Icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const OrderSuccessScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
+  const { isTamil, t } = useLanguage();
   const {
     orderId = 'DH-918273',
     totalAmount = 0,
@@ -33,15 +35,17 @@ export const OrderSuccessScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        <Text style={styles.title}>Order Confirmed!</Text>
+        <Text style={styles.title}>{isTamil ? 'ஆர்டர் உறுதி செய்யப்பட்டது!' : 'Order Confirmed!'}</Text>
         <Text style={styles.subtitle}>
-          Thank you for trusting Dharani Herbbals. Your pure herbal formulations are being prepared with traditional Siddha care.
+          {isTamil
+            ? 'தரணி ஹெர்பல்ஸை நம்பியதற்கு நன்றி. உங்கள் தூய மூலிகை தயாரிப்புகள் பாரம்பரிய முறையில் தயார் செய்யப்படுகின்றன.'
+            : 'Thank you for trusting Dharani Herbbals. Your pure herbal formulations are being prepared with traditional Siddha care.'}
         </Text>
 
         {/* Order Details Receipt Card */}
         <View style={styles.orderCard}>
           <View style={styles.orderReceiptHeader}>
-            <Text style={styles.receiptTitle}>Order Receipt</Text>
+            <Text style={styles.receiptTitle}>{isTamil ? 'ஆர்டர் ரசீது' : 'Order Receipt'}</Text>
             <View style={styles.orderIdBadge}>
               <Text style={styles.orderIdBadgeText}>#{orderId}</Text>
             </View>
@@ -50,26 +54,28 @@ export const OrderSuccessScreen = ({ route, navigation }) => {
           <View style={styles.divider} />
 
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Total Amount Paid/Due</Text>
+            <Text style={styles.label}>{isTamil ? 'செலுத்தப்பட்ட / செலுத்த வேண்டிய தொகை' : 'Total Amount Paid/Due'}</Text>
             <Text style={styles.priceValue}>₹{parseFloat(totalAmount).toFixed(0)}</Text>
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Payment Method</Text>
+            <Text style={styles.label}>{isTamil ? 'பணம் செலுத்திய முறை' : 'Payment Method'}</Text>
             <Text style={styles.value}>
-              {paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Online Payment'}
+              {paymentMethod === 'cod'
+                ? (isTamil ? 'பொருளைப் பெற்றதும் பணம் (COD)' : 'Cash on Delivery (COD)')
+                : (isTamil ? 'ஆன்லைன் பேமெண்ட்' : 'Online Payment')}
             </Text>
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Formulations Selected</Text>
-            <Text style={styles.value}>{itemCount} Product(s)</Text>
+            <Text style={styles.label}>{isTamil ? 'தேர்ந்தெடுக்கப்பட்ட பொருட்கள்' : 'Formulations Selected'}</Text>
+            <Text style={styles.value}>{itemCount} {isTamil ? 'தயாரிப்பு(கள்)' : 'Product(s)'}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.addressBlock}>
-            <Text style={styles.addressLabel}>Shipping Destination:</Text>
+            <Text style={styles.addressLabel}>{isTamil ? 'டெலிவரி முகவரி:' : 'Shipping Destination:'}</Text>
             <Text style={styles.addressText}>{shippingAddress}</Text>
           </View>
         </View>
@@ -80,9 +86,11 @@ export const OrderSuccessScreen = ({ route, navigation }) => {
             <Icon name="truck" size={18} color="#1B4D3E" />
           </View>
           <View style={styles.timelineInfo}>
-            <Text style={styles.timelineTitle}>Estimated Dispatch & Delivery</Text>
+            <Text style={styles.timelineTitle}>{isTamil ? 'எதிர்பார்க்கப்படும் டெலிவரி காலம்' : 'Estimated Dispatch & Delivery'}</Text>
             <Text style={styles.timelineText}>
-              2-4 business days for Tamil Nadu • 4-6 days for other states
+              {isTamil
+                ? 'தமிழ்நாட்டிற்கு 2-4 வேலை நாட்கள் • மற்ற மாநிலங்களுக்கு 4-6 நாட்கள்'
+                : '2-4 business days for Tamil Nadu • 4-6 days for other states'}
             </Text>
           </View>
         </View>
@@ -94,7 +102,7 @@ export const OrderSuccessScreen = ({ route, navigation }) => {
             onPress={() => navigation.navigate('OrderTrackingScreen', { orderId })}
             activeOpacity={0.88}
           >
-            <Text style={styles.trackBtnText}>Track Order Live ›</Text>
+            <Text style={styles.trackBtnText}>{isTamil ? 'ஆர்டரை கண்காணிக்கவும் ›' : 'Track Order Live ›'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -102,7 +110,7 @@ export const OrderSuccessScreen = ({ route, navigation }) => {
             onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
             activeOpacity={0.8}
           >
-            <Text style={styles.homeBtnText}>Return to Shopping</Text>
+            <Text style={styles.homeBtnText}>{isTamil ? 'ஷாப்பிங்கை தொடர்க' : 'Return to Shopping'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -157,6 +165,7 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     width: '100%',
+    maxWidth: 440,
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,

@@ -16,43 +16,46 @@ import { Header } from '../../components/common/Header';
 import { Icon } from '../../components/common/Icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { BUSINESS_INFO } from '../../constants/config';
+import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
 
-const TRACKING_STEPS = [
+const getTrackingSteps = (t, isTamil) => [
   {
     step: 1,
-    title: 'Order Placed & Confirmed',
-    desc: 'We received your order and the dispensary is assembling fresh herbal formulations.',
-    time: 'Day 1',
+    title: t('orderPlacedStep'),
+    desc: isTamil ? 'உங்கள் ஆர்டர் பெறப்பட்டு மூலிகை தயாரிப்பு சரிபார்க்கப்படுகிறது.' : 'We received your order and the dispensary is assembling fresh herbal formulations.',
+    time: isTamil ? 'நாள் 1' : 'Day 1',
   },
   {
     step: 2,
-    title: 'Packed & Quality Verified',
-    desc: 'Pure botanicals carefully inspected, sealed, and packed under strict hygiene standards.',
-    time: 'Day 1 - 2',
+    title: t('orderPackedStep'),
+    desc: isTamil ? 'தூய மூலிகைகள் பரிசோதிக்கப்பட்டு கவனமாக பேக்கிங் செய்யப்பட்டது.' : 'Pure botanicals carefully inspected, sealed, and packed under strict hygiene standards.',
+    time: isTamil ? 'நாள் 1 - 2' : 'Day 1 - 2',
   },
   {
     step: 3,
-    title: 'Dispatched with Courier',
-    desc: 'Handed over to carrier for express surface transport across India.',
-    time: 'Day 2 - 3',
+    title: t('orderDispatchedStep'),
+    desc: isTamil ? 'விரைவு தபால் / கொரியர் நிறுவனத்திடம் ஒப்படைக்கப்பட்டது.' : 'Handed over to carrier for express surface transport across India.',
+    time: isTamil ? 'நாள் 2 - 3' : 'Day 2 - 3',
   },
   {
     step: 4,
-    title: 'Out for Delivery',
-    desc: 'Package is in transit with your local delivery agent for doorstep delivery.',
-    time: 'Day 3 - 4',
+    title: t('outForDeliveryStep'),
+    desc: isTamil ? 'உங்கள் பகுதி டெலிவரி முகவரிக்கு கொண்டு வரப்படுகிறது.' : 'Package is in transit with your local delivery agent for doorstep delivery.',
+    time: isTamil ? 'நாள் 3 - 4' : 'Day 3 - 4',
   },
   {
     step: 5,
-    title: 'Delivered Safely',
-    desc: 'Package arrived safely at your doorstep.',
-    time: 'Completed',
+    title: t('deliveredSafelyStep'),
+    desc: isTamil ? 'உங்கள் இல்லத்திற்கு பாதுகாப்பாக டெலிவரி செய்யப்பட்டது.' : 'Package arrived safely at your doorstep.',
+    time: isTamil ? 'நிறைவடைந்தது' : 'Completed',
   },
 ];
 
 export const OrderTrackingScreen = ({ route }) => {
   const { orderId = 'DH-Live' } = route?.params || {};
+  const { isTamil, t } = useLanguage();
+  const trackingSteps = getTrackingSteps(t, isTamil);
   const [currentStep, setCurrentStep] = useState(2); // Order packed
   const [trackingData, setTrackingData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,18 +90,18 @@ export const OrderTrackingScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="Track Your Order" showBack={true} showCart={false} showLogo={false} />
+      <Header title={t('trackYourOrder')} showBack={true} showCart={false} showLogo={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Order Header Card */}
         <View style={styles.orderHeaderCard}>
           <View>
-            <Text style={styles.orderIdLabel}>Tracking Order</Text>
+            <Text style={styles.orderIdLabel}>{t('trackingOrder')}</Text>
             <Text style={styles.orderIdValue}>#{orderId}</Text>
           </View>
           <View style={styles.statusBadge}>
             <Text style={styles.statusBadgeText}>
-              {currentStep >= 5 ? 'DELIVERED' : currentStep >= 3 ? 'IN TRANSIT' : 'PROCESSING'}
+              {currentStep >= 5 ? (isTamil ? 'டெலிவரி செய்யப்பட்டது' : 'DELIVERED') : currentStep >= 3 ? (isTamil ? 'வழியில் உள்ளது' : 'IN TRANSIT') : (isTamil ? 'தயாரிப்பில் உள்ளது' : 'PROCESSING')}
             </Text>
           </View>
         </View>
@@ -109,9 +112,9 @@ export const OrderTrackingScreen = ({ route }) => {
             <Icon name="truck" size={20} color="#1B4D3E" />
           </View>
           <View style={styles.courierInfo}>
-            <Text style={styles.courierTitle}>Courier Service</Text>
+            <Text style={styles.courierTitle}>{isTamil ? 'கொரியர் சேவை' : 'Courier Service'}</Text>
             <Text style={styles.courierDesc}>
-              {trackingData?.courier_name || 'Standard Express Surface Delivery (India Post / ST Courier)'}
+              {trackingData?.courier_name || (isTamil ? 'விரைவு தபால் / ST கொரியர் சேவை' : 'Standard Express Surface Delivery (India Post / ST Courier)')}
             </Text>
             {trackingData?.tracking_number ? (
               <Text style={styles.awbText}>AWB / Docket: {trackingData.tracking_number}</Text>
@@ -122,13 +125,13 @@ export const OrderTrackingScreen = ({ route }) => {
         {/* Visual Timeline Section */}
         <View style={styles.timelineSection}>
           <View style={styles.timelineHeaderRow}>
-            <Text style={styles.timelineHeading}>Delivery Progress</Text>
+            <Text style={styles.timelineHeading}>{isTamil ? 'டெலிவரி நிலை' : 'Delivery Progress'}</Text>
             <View style={styles.timelineActivePill}>
-              <Text style={styles.timelineActivePillText}>Step {currentStep} of 5</Text>
+              <Text style={styles.timelineActivePillText}>{isTamil ? `படி ${currentStep} / 5` : `Step ${currentStep} of 5`}</Text>
             </View>
           </View>
 
-          {TRACKING_STEPS.map((stepItem, index) => {
+          {trackingSteps.map((stepItem, index) => {
             const isCompleted = stepItem.step <= currentStep;
             const isCurrent = stepItem.step === currentStep;
 
@@ -149,7 +152,7 @@ export const OrderTrackingScreen = ({ route }) => {
                       <View style={styles.dot} />
                     )}
                   </View>
-                  {index < TRACKING_STEPS.length - 1 ? (
+                  {index < trackingSteps.length - 1 ? (
                     <View
                       style={[
                         styles.verticalLine,
@@ -181,9 +184,9 @@ export const OrderTrackingScreen = ({ route }) => {
 
         {/* Need Help Card */}
         <View style={styles.helpCard}>
-          <Text style={styles.helpTitle}>Have questions about your delivery?</Text>
+          <Text style={styles.helpTitle}>{isTamil ? 'உங்கள் டெலிவரி பற்றிய கேள்விகள் உள்ளதா?' : 'Have questions about your delivery?'}</Text>
           <Text style={styles.helpSubtitle}>
-            Our herbal customer care team is available Mon-Sat, 9 AM - 7 PM to assist you.
+            {isTamil ? 'எங்கள் வாடிக்கையாளர் உதவிக்குழு திங்கள் - சனி, காலை 9 மணி முதல் இரவு 7 மணி வரை உங்களுக்கு உதவ தயாராக உள்ளது.' : 'Our herbal customer care team is available Mon-Sat, 9 AM - 7 PM to assist you.'}
           </Text>
 
           <TouchableOpacity
@@ -192,7 +195,7 @@ export const OrderTrackingScreen = ({ route }) => {
             activeOpacity={0.85}
           >
             <Icon name="whatsapp" size={17} color="#FFFFFF" />
-            <Text style={styles.helpBtnText}>Chat with Support on WhatsApp ›</Text>
+            <Text style={styles.helpBtnText}>{isTamil ? 'வாட்ஸ்அப் மூலம் உதவி பெற ›' : 'Chat with Support on WhatsApp ›'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

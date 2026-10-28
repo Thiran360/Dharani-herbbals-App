@@ -14,6 +14,12 @@ const ICON_ASSETS = {
   phone: require('../../assets/icons/phone_call.png'),
   whatsapp: require('../../assets/icons/whatsapp.png'),
   whatsappWhite: require('../../assets/icons/whatsapp_white.png'),
+  shieldCheck: require('../../assets/icons/shield_check.png'),
+  leaf: require('../../assets/icons/leaf.png'),
+  traditionalHerbs: require('../../assets/icons/traditional_herbs.png'),
+  heartHandshake: require('../../assets/icons/heart_handshake.png'),
+  userProfile: require('../../assets/icons/user_profile.png'),
+  share: require('../../assets/icons/share.png'),
 };
 
 export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) => {
@@ -235,45 +241,20 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
     }
 
     // -------------------------------------------------------------
-    // 5. USER / ACCOUNT ICON (Modern Avatar Silhouette)
+    // 5. USER / ACCOUNT / PROFILE ICON (High-DPI Silhouette Vector)
     // -------------------------------------------------------------
     case 'user':
-    case 'account': {
-      const headSize = Math.round(size * 0.4);
-      const shoulderW = Math.round(size * 0.82);
-      const shoulderH = Math.round(size * 0.38);
+    case 'account':
+    case 'profile':
       return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ alignItems: 'center' }}>
-            {/* Head */}
-            <View
-              style={{
-                width: headSize,
-                height: headSize,
-                borderRadius: headSize / 2,
-                borderWidth: focused ? 0 : strokeWidth,
-                borderColor: iconColor,
-                backgroundColor: focused ? iconColor : 'transparent',
-                marginBottom: 2,
-              }}
-            />
-            {/* Shoulders / Body */}
-            <View
-              style={{
-                width: shoulderW,
-                height: shoulderH,
-                borderTopLeftRadius: shoulderW / 2,
-                borderTopRightRadius: shoulderW / 2,
-                borderWidth: focused ? 0 : strokeWidth,
-                borderColor: iconColor,
-                borderBottomWidth: 0,
-                backgroundColor: focused ? iconColor : 'transparent',
-              }}
-            />
-          </View>
+          <Image
+            source={ICON_ASSETS.userProfile}
+            style={{ width: size * 0.9, height: size * 0.9, tintColor: iconColor }}
+            resizeMode="contain"
+          />
         </View>
       );
-    }
 
     // -------------------------------------------------------------
     // 6. HEART / WISHLIST
@@ -395,32 +376,65 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
       );
 
     case 'trash':
+    case 'delete':
+    case 'remove': {
+      const canWidth = Math.max(9, Math.round(size * 0.65));
+      const canHeight = Math.max(10, Math.round(size * 0.78));
+      const lidWidth = Math.round(canWidth * 1.2);
+      const handleWidth = Math.max(4, Math.round(canWidth * 0.45));
+      const stroke = size <= 14 ? 1.3 : 1.6;
+
       return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: size * 0.68, height: size * 0.75, alignItems: 'center' }}>
-            {/* Lid */}
-            <View style={{ width: size * 0.72, height: 2, backgroundColor: iconColor, borderRadius: 1, marginBottom: 1 }} />
+          <View style={{ width: lidWidth, height: canHeight, alignItems: 'center', justifyContent: 'center' }}>
+            {/* Top Handle */}
+            <View
+              style={{
+                width: handleWidth,
+                height: 1.8,
+                borderTopLeftRadius: 1.5,
+                borderTopRightRadius: 1.5,
+                backgroundColor: iconColor,
+                marginBottom: 1,
+              }}
+            />
+            {/* Horizontal Lid */}
+            <View
+              style={{
+                width: lidWidth,
+                height: stroke + 0.2,
+                backgroundColor: iconColor,
+                borderRadius: 1,
+              }}
+            />
             {/* Bin Body */}
             <View
               style={{
-                width: size * 0.54,
+                width: canWidth,
                 flex: 1,
-                borderWidth: 1.6,
+                borderWidth: stroke,
                 borderColor: iconColor,
                 borderTopWidth: 0,
                 borderBottomLeftRadius: 2.5,
                 borderBottomRightRadius: 2.5,
                 flexDirection: 'row',
                 justifyContent: 'space-evenly',
-                paddingVertical: 2,
+                alignItems: 'center',
+                paddingTop: 1.5,
+                paddingBottom: 2,
               }}
             >
-              <View style={{ width: 1.2, height: '80%', backgroundColor: iconColor }} />
-              <View style={{ width: 1.2, height: '80%', backgroundColor: iconColor }} />
+              {size >= 14 && (
+                <>
+                  <View style={{ width: stroke * 0.8, height: '65%', backgroundColor: iconColor, borderRadius: 0.5 }} />
+                  <View style={{ width: stroke * 0.8, height: '65%', backgroundColor: iconColor, borderRadius: 0.5 }} />
+                </>
+              )}
             </View>
           </View>
         </View>
       );
+    }
 
     case 'check':
       return (
@@ -490,38 +504,18 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
       );
 
     // -------------------------------------------------------------
-    // 11. SHIELD / VERIFIED
+    // 11. SHIELD / QUALITY / VERIFIED
     // -------------------------------------------------------------
     case 'shield':
+    case 'quality':
+    case 'shield-check':
       return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-          <View
-            style={{
-              width: size * 0.68,
-              height: size * 0.8,
-              borderWidth: 1.8,
-              borderColor: iconColor,
-              borderTopLeftRadius: 5,
-              borderTopRightRadius: 5,
-              borderBottomLeftRadius: size * 0.34,
-              borderBottomRightRadius: size * 0.34,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: focused ? 'rgba(46, 125, 50, 0.1)' : 'transparent',
-            }}
-          >
-            <View
-              style={{
-                width: 4,
-                height: 7,
-                borderRightWidth: 1.6,
-                borderBottomWidth: 1.6,
-                borderColor: iconColor,
-                transform: [{ rotate: '45deg' }],
-                marginBottom: 2,
-              }}
-            />
-          </View>
+          <Image
+            source={ICON_ASSETS.shieldCheck}
+            style={{ width: size * 0.95, height: size * 0.95, tintColor: iconColor }}
+            resizeMode="contain"
+          />
         </View>
       );
 
@@ -529,24 +523,49 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
     // 12. LEAF / NATURAL
     // -------------------------------------------------------------
     case 'leaf':
+    case 'natural':
       return (
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-          <View
-            style={{
-              width: size * 0.68,
-              height: size * 0.68,
-              borderTopLeftRadius: size * 0.68,
-              borderBottomRightRadius: size * 0.68,
-              borderWidth: 1.8,
-              borderColor: iconColor,
-              backgroundColor: focused ? 'rgba(46, 125, 50, 0.15)' : 'transparent',
-              transform: [{ rotate: '-45deg' }],
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <View style={{ width: 1.4, height: '70%', backgroundColor: iconColor }} />
-          </View>
+          <Image
+            source={ICON_ASSETS.leaf}
+            style={{ width: size * 0.95, height: size * 0.95, tintColor: iconColor }}
+            resizeMode="contain"
+          />
+        </View>
+      );
+
+    // -------------------------------------------------------------
+    // 12B. ROOTED IN TRADITION / HERBAL SPRIG
+    // -------------------------------------------------------------
+    case 'tradition':
+    case 'traditional':
+    case 'herbal':
+    case 'heritage':
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <Image
+            source={ICON_ASSETS.traditionalHerbs}
+            style={{ width: size * 0.95, height: size * 0.95, tintColor: iconColor }}
+            resizeMode="contain"
+          />
+        </View>
+      );
+
+    // -------------------------------------------------------------
+    // 12C. CUSTOMER FOCUSED / HEART-HANDSHAKE CARE
+    // -------------------------------------------------------------
+    case 'customer':
+    case 'customer-focused':
+    case 'heart-handshake':
+    case 'handshake':
+    case 'care':
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <Image
+            source={ICON_ASSETS.heartHandshake}
+            style={{ width: size * 0.95, height: size * 0.95, tintColor: iconColor }}
+            resizeMode="contain"
+          />
         </View>
       );
 
@@ -559,7 +578,7 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
         <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
           <Image
             source={ICON_ASSETS.phone}
-            style={{ width: size * 0.92, height: size * 0.92, tintColor: iconColor }}
+            style={{ width: size * 0.95, height: size * 0.95, tintColor: iconColor }}
             resizeMode="contain"
           />
         </View>
@@ -679,6 +698,21 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
       );
 
     // -------------------------------------------------------------
+    // 17B. SHARE / SHARE-2 ICON
+    // -------------------------------------------------------------
+    case 'share':
+    case 'share-2':
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <Image
+            source={ICON_ASSETS.share}
+            style={{ width: size * 0.95, height: size * 0.95, tintColor: iconColor }}
+            resizeMode="contain"
+          />
+        </View>
+      );
+
+    // -------------------------------------------------------------
     // 18. SPARKLES
     // -------------------------------------------------------------
     case 'sparkles':
@@ -706,6 +740,260 @@ export const Icon = ({ name, size = 22, color = '#64748b', focused = false }) =>
           <View style={{ width: size * 0.75, height: 2, backgroundColor: iconColor, borderRadius: 1 }} />
         </View>
       );
+
+    case 'edit':
+    case 'pencil':
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: size * 0.68,
+              height: size * 0.26,
+              borderWidth: 1.8,
+              borderColor: iconColor,
+              borderRadius: 2,
+              transform: [{ rotate: '-45deg' }],
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              paddingLeft: 2,
+            }}
+          >
+            <View style={{ width: 1.5, height: '100%', backgroundColor: iconColor }} />
+          </View>
+        </View>
+      );
+
+    // -------------------------------------------------------------
+    // 19. GLOBE / LANGUAGES (Clean circular meridian globe)
+    // -------------------------------------------------------------
+    case 'globe':
+    case 'language':
+    case 'languages': {
+      const d = Math.round(size * 0.82);
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: d,
+              height: d,
+              borderRadius: d / 2,
+              borderWidth: strokeWidth,
+              borderColor: iconColor,
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Equator line */}
+            <View style={{ width: '100%', height: strokeWidth, backgroundColor: iconColor }} />
+            {/* Meridian ellipse */}
+            <View
+              style={{
+                position: 'absolute',
+                width: d * 0.48,
+                height: d,
+                borderRadius: d * 0.24,
+                borderWidth: strokeWidth,
+                borderColor: iconColor,
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // 20. PACKAGE / BOX (Ecommerce parcel)
+    // -------------------------------------------------------------
+    case 'package':
+    case 'box':
+    case 'order': {
+      const w = Math.round(size * 0.82);
+      const h = Math.round(size * 0.72);
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: w,
+              height: h,
+              borderWidth: strokeWidth,
+              borderColor: iconColor,
+              borderRadius: 3,
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+            }}
+          >
+            {/* Top tape / flap line */}
+            <View
+              style={{
+                width: '100%',
+                height: strokeWidth,
+                backgroundColor: iconColor,
+                marginTop: h * 0.28,
+              }}
+            />
+            {/* Vertical center tape */}
+            <View
+              style={{
+                position: 'absolute',
+                width: w * 0.28,
+                height: h * 0.3,
+                borderWidth: strokeWidth,
+                borderColor: iconColor,
+                borderTopWidth: 0,
+                backgroundColor: focused ? iconColor : 'transparent',
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // 21. HEADSET / SUPPORT
+    // -------------------------------------------------------------
+    case 'headset':
+    case 'support': {
+      const w = Math.round(size * 0.82);
+      const h = Math.round(size * 0.8);
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: w, height: h, alignItems: 'center', position: 'relative' }}>
+            {/* Headband Arc */}
+            <View
+              style={{
+                width: w,
+                height: h * 0.7,
+                borderTopLeftRadius: w / 2,
+                borderTopRightRadius: w / 2,
+                borderWidth: strokeWidth,
+                borderColor: iconColor,
+                borderBottomWidth: 0,
+              }}
+            />
+            {/* Left Ear Cushion */}
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                bottom: h * 0.15,
+                width: w * 0.2,
+                height: h * 0.42,
+                borderRadius: 2.5,
+                backgroundColor: iconColor,
+              }}
+            />
+            {/* Right Ear Cushion */}
+            <View
+              style={{
+                position: 'absolute',
+                right: 0,
+                bottom: h * 0.15,
+                width: w * 0.2,
+                height: h * 0.42,
+                borderRadius: 2.5,
+                backgroundColor: iconColor,
+              }}
+            />
+            {/* Microphone Boom */}
+            <View
+              style={{
+                position: 'absolute',
+                right: w * 0.1,
+                bottom: 0,
+                width: w * 0.42,
+                height: strokeWidth + 0.2,
+                backgroundColor: iconColor,
+                borderRadius: 1,
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // 22. FILE-TEXT / DOCUMENT / POLICIES
+    // -------------------------------------------------------------
+    case 'file-text':
+    case 'document':
+    case 'policy': {
+      const w = Math.round(size * 0.68);
+      const h = Math.round(size * 0.84);
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: w,
+              height: h,
+              borderWidth: strokeWidth,
+              borderColor: iconColor,
+              borderRadius: 2.5,
+              padding: 3,
+              justifyContent: 'space-evenly',
+            }}
+          >
+            <View style={{ width: '80%', height: 1.5, backgroundColor: iconColor, borderRadius: 1 }} />
+            <View style={{ width: '100%', height: 1.5, backgroundColor: iconColor, borderRadius: 1 }} />
+            <View style={{ width: '60%', height: 1.5, backgroundColor: iconColor, borderRadius: 1 }} />
+          </View>
+        </View>
+      );
+    }
+
+    // -------------------------------------------------------------
+    // 23. LOGOUT / EXIT
+    // -------------------------------------------------------------
+    case 'logout':
+    case 'log-out': {
+      const w = Math.round(size * 0.8);
+      const h = Math.round(size * 0.8);
+      return (
+        <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: w, height: h, position: 'relative', justifyContent: 'center' }}>
+            {/* Door Frame (open) */}
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: w * 0.55,
+                height: h,
+                borderWidth: strokeWidth,
+                borderRightWidth: 0,
+                borderColor: iconColor,
+                borderTopLeftRadius: 3,
+                borderBottomLeftRadius: 3,
+              }}
+            />
+            {/* Arrow shaft */}
+            <View
+              style={{
+                position: 'absolute',
+                left: w * 0.28,
+                width: w * 0.54,
+                height: strokeWidth,
+                backgroundColor: iconColor,
+              }}
+            />
+            {/* Arrow head */}
+            <View
+              style={{
+                position: 'absolute',
+                right: 0,
+                width: w * 0.32,
+                height: w * 0.32,
+                borderTopWidth: strokeWidth,
+                borderRightWidth: strokeWidth,
+                borderColor: iconColor,
+                transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
 
     default:
       return (

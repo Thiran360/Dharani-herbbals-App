@@ -12,6 +12,8 @@ import {
   RefreshControl,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { ProductCard } from '../../components/common/ProductCard';
@@ -20,18 +22,26 @@ import { Icon } from '../../components/common/Icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { STATIC_CATEGORIES } from '../../constants/categories';
 import { useLanguage } from '../../context/LanguageContext';
+import { getLocalizedCategoryName } from '../../utils/localization';
+import { filterProductsByQuery } from '../../utils/productSearch';
+import { prefetchImages } from '../../utils/imageOptimizer';
 import api from '../../services/api';
 
 export const ProductListScreen = ({ route, navigation }) => {
-  const { isTamil } = useLanguage();
+  const { width } = useWindowDimensions();
+  const numColumns = width >= 640 ? 3 : 2;
+  const { isTamil, t, language } = useLanguage();
   const initialCategoryName = route?.params?.categoryName || null;
   const initialCategoryId = route?.params?.categoryId || null;
-  const pageTitle = route?.params?.title || initialCategoryName || 'All Products';
+  const initialSearchQuery = route?.params?.searchQuery || route?.params?.query || route?.params?.formulation || '';
+  const pageTitle = route?.params?.title || (initialCategoryName
+    ? getLocalizedCategoryName(initialCategoryName, language)
+    : (initialSearchQuery || t('allProducts')));
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(STATIC_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState(initialCategoryName || 'All');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [sortBy, setSortBy] = useState('popular'); // 'popular', 'price_low', 'price_high', 'discount'
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -72,20 +82,31 @@ export const ProductListScreen = ({ route, navigation }) => {
       .filter(p => {
         // Category filter
         if (selectedCategory !== 'All') {
+          const selLower = selectedCategory.toLowerCase();
+          const pCatLower = (p.category_name || '').toLowerCase();
+          const activeCategoryObj = categories.find(
+            c => c.name && c.name.toLowerCase() === selLower
+          );
+          const activeCatId = activeCategoryObj?.id;
+
           const catMatch =
-            (p.category_name && p.category_name.toLowerCase() === selectedCategory.toLowerCase()) ||
-            (p.category && initialCategoryId && String(p.category) === String(initialCategoryId));
+            pCatLower === selLower ||
+            (selLower === 'traditional food' && pCatLower === 'food') ||
+            (selLower === 'food' && pCatLower === 'traditional food') ||
+            (selLower === 'face' && pCatLower === 'skin') ||
+            (selLower === 'skin' && pCatLower === 'face') ||
+            (selLower === 'pooja' && pCatLower === 'poojas') ||
+            (selLower === 'poojas' && pCatLower === 'pooja') ||
+            (activeCatId && p.category && String(p.category) === String(activeCatId)) ||
+            (selectedCategory === initialCategoryName && initialCategoryId && p.category && String(p.category) === String(initialCategoryId));
+
           if (!catMatch) return false;
         }
 
-        // Search query filter
+        // Search query filter using shared smart search engine
         if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
-          const nameMatch = p.name && p.name.toLowerCase().includes(q);
-          const tamilMatch = p.tamil_name && p.tamil_name.toLowerCase().includes(q);
-          const descMatch = p.description && p.description.toLowerCase().includes(q);
-          const brandMatch = p.brand && p.brand.toLowerCase().includes(q);
-          return nameMatch || tamilMatch || descMatch || brandMatch;
+          const matched = filterProductsByQuery([p], searchQuery);
+          if (matched.length === 0) return false;
         }
 
         return true;
@@ -111,8 +132,17 @@ export const ProductListScreen = ({ route, navigation }) => {
     return [{ id: 'all', name: 'All', nameTa: 'அனைத்தும்' }, ...categories];
   }, [categories]);
 
+  const columnWidthPercent = `${(100 / numColumns).toFixed(2)}%`;
+
+  // Pre-warm native image cache for top visible formulations
+  useEffect(() => {
+    if (filteredProducts && filteredProducts.length > 0) {
+      prefetchImages(filteredProducts.slice(0, 8).map(p => p.image));
+    }
+  }, [filteredProducts]);
+
   const renderProductItem = ({ item }) => (
-    <View style={styles.gridItem}>
+    <View style={[styles.gridItem, { maxWidth: columnWidthPercent }]}>
       <ProductCard product={item} />
     </View>
   );
@@ -141,13 +171,18 @@ export const ProductListScreen = ({ route, navigation }) => {
         </View>
 
         {/* Sort Chips */}
-        <View style={styles.sortRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sortScrollContent}
+          style={styles.sortRow}
+        >
           <TouchableOpacity
             style={[styles.sortChip, sortBy === 'popular' ? styles.sortChipActive : null]}
             onPress={() => setSortBy('popular')}
           >
             <Text style={[styles.sortText, sortBy === 'popular' ? styles.sortTextActive : null]}>
-              Popular
+              {isTamil ? 'பிரபலமானவை' : 'Popular'}
             </Text>
           </TouchableOpacity>
 
@@ -156,7 +191,7 @@ export const ProductListScreen = ({ route, navigation }) => {
             onPress={() => setSortBy('price_low')}
           >
             <Text style={[styles.sortText, sortBy === 'price_low' ? styles.sortTextActive : null]}>
-              Price: Low to High
+              {isTamil ? 'விலை: குறைவு முதல் அதிகம்' : 'Price: Low to High'}
             </Text>
           </TouchableOpacity>
 
@@ -165,10 +200,10 @@ export const ProductListScreen = ({ route, navigation }) => {
             onPress={() => setSortBy('price_high')}
           >
             <Text style={[styles.sortText, sortBy === 'price_high' ? styles.sortTextActive : null]}>
-              Price: High to Low
+              {isTamil ? 'விலை: அதிகம் முதல் குறைவு' : 'Price: High to Low'}
             </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         {/* Category Pills Scroll */}
         <FlatList
@@ -186,7 +221,7 @@ export const ProductListScreen = ({ route, navigation }) => {
                 activeOpacity={0.75}
               >
                 <Text style={[styles.pillText, isSelected ? styles.pillTextActive : null]}>
-                  {isTamil && item.nameTa ? item.nameTa : item.name}
+                  {getLocalizedCategoryName(item, language)}
                 </Text>
               </TouchableOpacity>
             );
@@ -196,7 +231,9 @@ export const ProductListScreen = ({ route, navigation }) => {
         {/* Count banner */}
         <View style={styles.countRow}>
           <Text style={styles.countText}>
-            🌿 Showing {filteredProducts.length} authentic herbal formulations
+            {isTamil
+              ? `🌿 ${filteredProducts.length} இயற்கை மூலிகை தயாரிப்புகள் உள்ளன`
+              : `🌿 Showing ${filteredProducts.length} authentic herbal formulations`}
           </Text>
         </View>
       </View>
@@ -204,16 +241,24 @@ export const ProductListScreen = ({ route, navigation }) => {
       {isLoading ? (
         <View style={styles.loaderCenter}>
           <ActivityIndicator size="large" color="#1B4D3E" />
-          <Text style={styles.loadingText}>Loading pure herbal formulations...</Text>
+          <Text style={styles.loadingText}>
+            {isTamil ? 'மூலிகை தயாரிப்புகள் ஏற்றப்படுகின்றன...' : 'Loading pure herbal formulations...'}
+          </Text>
         </View>
       ) : (
         <FlatList
+          key={`grid-${numColumns}`}
           data={filteredProducts}
           keyExtractor={item => `prod-${item.id}`}
           renderItem={renderProductItem}
-          numColumns={2}
+          numColumns={numColumns}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          updateCellsBatchingPeriod={50}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -225,9 +270,13 @@ export const ProductListScreen = ({ route, navigation }) => {
           ListEmptyComponent={
             <EmptyState
               icon="search"
-              title="No formulations found"
-              subtitle="We couldn't find any products matching your criteria. Try adjusting your search query or category filters."
-              buttonText="Reset Filters"
+              title={isTamil ? 'தயாரிப்புகள் எதுவும் கிடைக்கவில்லை' : 'No formulations found'}
+              subtitle={
+                isTamil
+                  ? 'உங்கள் தேடலுக்குரிய மூலிகை தயாரிப்புகள் எதுவும் இல்லை. வடிகட்டிகளை மாற்றி மீண்டும் முயற்சிக்கவும்.'
+                  : "We couldn't find any products matching your criteria. Try adjusting your search query or category filters."
+              }
+              buttonText={isTamil ? 'வடிகட்டிகளை மீட்டமை' : 'Reset Filters'}
               onButtonPress={() => {
                 setSelectedCategory('All');
                 setSearchQuery('');
@@ -272,9 +321,11 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   sortRow: {
-    flexDirection: 'row',
     paddingHorizontal: SPACING.md,
     marginTop: SPACING.sm + 2,
+  },
+  sortScrollContent: {
+    flexDirection: 'row',
     gap: 8,
   },
   sortChip: {
@@ -340,7 +391,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
   gridItem: {
-    flex: 1 / 2,
+    flex: 1,
+    maxWidth: '50%',
     padding: SPACING.xs,
   },
   loaderCenter: {

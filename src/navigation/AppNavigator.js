@@ -62,10 +62,13 @@ const BottomTabNavigator = () => {
           ...SHADOWS.medium,
         },
         tabBarLabelStyle: {
-          fontSize: 10.5,
+          fontSize: 10,
           fontWeight: '700',
-          letterSpacing: 0.2,
-          marginTop: 2,
+          letterSpacing: 0.1,
+          marginTop: 1,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
       }}
     >
@@ -196,8 +199,8 @@ export const AppNavigator = () => {
 
 const styles = StyleSheet.create({
   tabIconWrapper: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: RADIUS.full,
     alignItems: 'center',
     justifyContent: 'center',

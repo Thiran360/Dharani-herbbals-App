@@ -18,51 +18,58 @@ import {
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { Icon } from '../../components/common/Icons';
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
+import { SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const LoginScreen = ({ navigation, route }) => {
-  const { loginWithMobile, guestLogin } = useAuth();
-  const { isTamil } = useLanguage();
+  const { user, loginWithMobile, logout } = useAuth();
+  const { isTamil, t } = useLanguage();
   const [mobile, setMobile] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const pendingAction = route?.params?.pendingAction || null;
+  const returnToCheckout = route?.params?.returnToCheckout || false;
 
   const handleSendOtp = async () => {
     const cleanMobile = mobile.trim();
-    if (!cleanMobile || cleanMobile.length < 10) {
-      Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
+    if (!cleanMobile || cleanMobile.length !== 10 || !/^[6-9]\d{9}$/.test(cleanMobile)) {
+      Alert.alert(
+        isTamil ? 'தவறான மொபைல் எண்' : 'Invalid Mobile Number',
+        isTamil
+          ? 'தயவுசெய்து சரியான 10 இலக்க இந்திய மொபைல் எண்ணை உள்ளிடவும் (6-9 இல் தொடங்கும்).'
+          : 'Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.'
+      );
       return;
     }
 
     setIsLoading(true);
     try {
-      let pendingUserId = null;
-      try {
-        const res = await loginWithMobile(cleanMobile);
-        if (res?.user_id) pendingUserId = res.user_id;
-        else if (res?.id) pendingUserId = res.id;
-      } catch (apiErr) {
-        console.warn('Login API note:', apiErr.message);
+      // If a previous session exists with a different number, safely logout first to prevent session reuse
+      if (user && (user.mobile !== cleanMobile && user.phone_number !== cleanMobile)) {
+        await logout();
       }
 
-      navigation.navigate('OtpScreen', {
+      const res = await loginWithMobile(cleanMobile);
+      if (!res || res.success === false) {
+        throw new Error(res?.message || (isTamil ? 'OTP அனுப்ப முடியவில்லை.' : 'Failed to send OTP. Please try again.'));
+      }
+
+      const pendingUserId = res.user_id || res.id || null;
+
+      // Navigate to OTP entry screen without any serverOtp or auto-authentication payload
+      navigation.replace('OtpScreen', {
         mobile: cleanMobile,
         pendingUserId: pendingUserId,
+        pendingAction: pendingAction,
+        returnToCheckout: returnToCheckout,
       });
     } catch (e) {
-      Alert.alert('Login', 'Failed to send OTP. Please try again.');
+      Alert.alert(
+        isTamil ? 'பிழை' : 'Login Error',
+        e?.message || (isTamil ? 'OTP அனுப்ப முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' : 'Failed to send OTP. Please try again.')
+      );
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGuestContinue = async () => {
-    await guestLogin(mobile.length >= 10 ? mobile : '9999999999');
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate('MainTabs', { screen: 'HomeTab' });
     }
   };
 
@@ -71,18 +78,14 @@ export const LoginScreen = ({ navigation, route }) => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Header title="Login / Register" showBack={true} showCart={false} showLogo={false} />
+      <Header title={t('login')} showBack={true} showCart={false} showLogo={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Brand Banner with Botanical Halo */}
+        {/* Brand Banner with Botanical Profile Halo */}
         <View style={styles.brandHero}>
           <View style={styles.logoHalo}>
             <View style={styles.logoCircle}>
-              <Image
-                source={require('../../assets/favicon.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <Icon name="account" size={46} color="#1B4D3E" />
             </View>
           </View>
           <Image
@@ -102,9 +105,9 @@ export const LoginScreen = ({ navigation, route }) => {
 
         {/* Login Card */}
         <View style={styles.loginCard}>
-          <Text style={styles.cardHeading}>Sign In or Register</Text>
+          <Text style={styles.cardHeading}>{t('login')}</Text>
           <Text style={styles.cardSub}>
-            Enter your mobile number to receive a secure one-time verification code (OTP).
+            {t('loginSubtitle')}
           </Text>
 
           {/* Mobile Input Group */}
@@ -114,7 +117,7 @@ export const LoginScreen = ({ navigation, route }) => {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="10-digit mobile number"
+              placeholder={isTamil ? '10 இலக்க மொபைல் எண்' : '10-digit mobile number'}
               placeholderTextColor="#8A9E92"
               keyboardType="phone-pad"
               maxLength={10}
@@ -134,23 +137,8 @@ export const LoginScreen = ({ navigation, route }) => {
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.primaryBtnText}>Send Verification OTP ›</Text>
+              <Text style={styles.primaryBtnText}>{t('sendOtp')}</Text>
             )}
-          </TouchableOpacity>
-
-          <View style={styles.orDividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Guest Checkout Button */}
-          <TouchableOpacity
-            style={styles.guestBtn}
-            onPress={handleGuestContinue}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.guestBtnText}>Continue as Guest Customer</Text>
           </TouchableOpacity>
         </View>
 
@@ -158,15 +146,15 @@ export const LoginScreen = ({ navigation, route }) => {
         <View style={styles.trustRow}>
           <View style={styles.trustBadge}>
             <Icon name="shield" size={15} color="#1B4D3E" />
-            <Text style={styles.trustText}>Safe & Secure</Text>
+            <Text style={styles.trustText}>{isTamil ? 'பாதுகாப்பானது' : 'Safe & Secure'}</Text>
           </View>
           <View style={styles.trustBadge}>
             <Icon name="leaf" size={15} color="#1B4D3E" />
-            <Text style={styles.trustText}>100% Pure Herbs</Text>
+            <Text style={styles.trustText}>{isTamil ? '100% தூய மூலிகை' : '100% Pure Herbs'}</Text>
           </View>
           <View style={styles.trustBadge}>
             <Icon name="truck" size={15} color="#1B4D3E" />
-            <Text style={styles.trustText}>Direct from Erode</Text>
+            <Text style={styles.trustText}>{isTamil ? 'நேரடியாக ஈரோட்டிலிருந்து' : 'Direct from Erode'}</Text>
           </View>
         </View>
       </ScrollView>
@@ -186,26 +174,29 @@ const styles = StyleSheet.create({
   },
   brandHero: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   logoHalo: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: '#EBF2ED',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#E8F3ED',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm + 2,
-    borderWidth: 1.5,
-    borderColor: 'rgba(27, 77, 62, 0.12)',
+    marginBottom: SPACING.sm,
+    borderWidth: 2,
+    borderColor: '#C8DFD2',
+    ...SHADOWS.small,
   },
   logoCircle: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E2EBE5',
     ...SHADOWS.small,
   },
   logo: {
@@ -214,7 +205,8 @@ const styles = StyleSheet.create({
   },
   brandLogotype: {
     height: 24,
-    width: 200,
+    maxWidth: 200,
+    width: '60%',
     tintColor: '#1B4D3E',
     marginBottom: 2,
   },
@@ -242,9 +234,12 @@ const styles = StyleSheet.create({
   loginCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
+    padding: SPACING.lg,
     borderWidth: 1,
     borderColor: 'rgba(27, 77, 62, 0.08)',
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     ...SHADOWS.medium,
   },
   cardHeading: {
@@ -339,8 +334,10 @@ const styles = StyleSheet.create({
   },
   trustRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: SPACING.xl,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: SPACING.lg,
   },
   trustBadge: {
     flexDirection: 'row',

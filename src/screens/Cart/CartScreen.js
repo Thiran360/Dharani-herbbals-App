@@ -13,12 +13,17 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../components/common/Header';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Icon } from '../../components/common/Icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import { formatProductSize } from '../../utils/formatters';
+import { getLocalizedProductName } from '../../utils/localization';
+import { getOptimizedImageSource } from '../../utils/imageOptimizer';
 
 const STATE_OPTIONS = [
   'Tamil Nadu',
@@ -44,20 +49,29 @@ export const CartScreen = ({ navigation }) => {
     removeFromCart,
     clearCart,
   } = useCart();
-  const { isTamil } = useLanguage();
+  const { user, isAuthenticated, isGuest } = useAuth();
+  const { isTamil, t, language } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   const handleClearCart = () => {
     Alert.alert(
-      'Clear Shopping Bag',
-      'Are you sure you want to remove all formulations from your bag?',
+      isTamil ? 'கூடையை காலி செய்' : 'Clear Shopping Bag',
+      isTamil ? 'கூடையில் உள்ள அனைத்து பொருட்களையும் நீக்க விரும்புகிறீர்களா?' : 'Are you sure you want to remove all formulations from your bag?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear All', style: 'destructive', onPress: clearCart },
+        { text: t('cancel'), style: 'cancel' },
+        { text: isTamil ? 'நீக்கு' : 'Clear All', style: 'destructive', onPress: clearCart },
       ]
     );
   };
 
   const handleCheckout = () => {
+    if (!isAuthenticated || isGuest || !user?.id) {
+      navigation.navigate('LoginScreen', {
+        returnToCheckout: true,
+        pendingAction: { type: 'CHECKOUT' },
+      });
+      return;
+    }
     navigation.navigate('CheckoutScreen');
   };
 
@@ -67,13 +81,10 @@ export const CartScreen = ({ navigation }) => {
         {/* Product Image in warm studio frame */}
         <View style={styles.itemImageContainer}>
           <Image
-            source={
-              item.image && item.image.startsWith('http')
-                ? { uri: item.image }
-                : require('../../assets/logo.png')
-            }
+            source={getOptimizedImageSource(item.image)}
             style={styles.itemImage}
             resizeMode="contain"
+            defaultSource={require('../../assets/logo.png')}
           />
         </View>
 
@@ -81,7 +92,7 @@ export const CartScreen = ({ navigation }) => {
         <View style={styles.itemDetails}>
           <View style={styles.itemTitleRow}>
             <Text style={styles.itemName} numberOfLines={2}>
-              {item.name}
+              {getLocalizedProductName(item, language)}
             </Text>
             <TouchableOpacity
               onPress={() => removeFromCart(item.id, item.variation_id)}
@@ -92,17 +103,15 @@ export const CartScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {item.tamil_name && item.tamil_name !== item.name ? (
-            <Text style={styles.itemTamilName} numberOfLines={1}>
-              {item.tamil_name}
-            </Text>
-          ) : null}
-
-          {item.variation_name ? (
-            <View style={styles.variantBadge}>
-              <Text style={styles.itemVariant}>{item.variation_name}</Text>
-            </View>
-          ) : null}
+          {(() => {
+            const formattedSize = formatProductSize(item);
+            const variantText = item.variation_name || formattedSize;
+            return variantText ? (
+              <View style={styles.variantBadge}>
+                <Text style={styles.itemVariant}>{variantText}</Text>
+              </View>
+            ) : null;
+          })()}
 
           <View style={styles.itemBottomRow}>
             <View>
@@ -110,7 +119,9 @@ export const CartScreen = ({ navigation }) => {
                 ₹{(item.price * item.quantity).toFixed(0)}
               </Text>
               {item.quantity > 1 ? (
-                <Text style={styles.unitPriceText}>₹{item.price.toFixed(0)} each</Text>
+                <Text style={styles.unitPriceText}>
+                  {isTamil ? `₹${item.price.toFixed(0)} ஒவ்வொன்றும்` : `₹${item.price.toFixed(0)} each`}
+                </Text>
               ) : null}
             </View>
 
@@ -127,7 +138,11 @@ export const CartScreen = ({ navigation }) => {
                 }}
                 activeOpacity={0.7}
               >
-                <Icon name={item.quantity === 1 ? 'trash' : 'minus'} size={12} color="#1B4D3E" />
+                <Icon
+                  name={item.quantity === 1 ? 'trash' : 'minus'}
+                  size={item.quantity === 1 ? 14 : 12}
+                  color={item.quantity === 1 ? '#D9534F' : '#1B4D3E'}
+                />
               </TouchableOpacity>
 
               <Text style={styles.stepQty}>{item.quantity}</Text>
@@ -152,9 +167,9 @@ export const CartScreen = ({ navigation }) => {
         <Header title={isTamil ? 'கூடை' : 'Your Shopping Bag'} showBack={false} showCart={false} showLogo={false} />
         <EmptyState
           icon="cart"
-          title="Your Shopping Bag is Empty"
-          subtitle="Explore our pure herbal formulations, traditional shampoos, and cold-pressed thailams to replenish your wellness ritual."
-          buttonText="Explore Collections"
+          title={t('emptyCart')}
+          subtitle={t('emptyCartSubtitle')}
+          buttonText={isTamil ? 'பிரிவுகளை காண்க' : 'Explore Collections'}
           onButtonPress={() => navigation.navigate('MainTabs', { screen: 'CategoriesTab' })}
         />
       </View>
@@ -181,6 +196,10 @@ export const CartScreen = ({ navigation }) => {
         renderItem={renderCartItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        removeClippedSubviews={true}
         ListHeaderComponent={
           <View>
             {/* Luxury Free Shipping Progress Indicator */}
@@ -192,10 +211,12 @@ export const CartScreen = ({ navigation }) => {
                   </View>
                   <View style={styles.freeShipTextContainer}>
                     <Text style={styles.freeShipSuccessText}>
-                      Complimentary Delivery Unlocked!
+                      {isTamil ? 'இலவச டெலிவரி கிடைத்துள்ளது!' : 'Complimentary Delivery Unlocked!'}
                     </Text>
                     <Text style={styles.freeShipSubText}>
-                      Your order qualifies for free delivery to {selectedState}.
+                      {isTamil
+                        ? `${selectedState} மாநிலத்திற்கு இலவச டெலிவரிக்கு தகுதி பெற்றுள்ளது.`
+                        : `Your order qualifies for free delivery to ${selectedState}.`}
                     </Text>
                   </View>
                 </View>
@@ -203,9 +224,13 @@ export const CartScreen = ({ navigation }) => {
                 <View>
                   <View style={styles.progressHeaderRow}>
                     <Text style={styles.freeShipNotice}>
-                      Add <Text style={styles.boldText}>₹{deliveryInfo.remaining.toFixed(0)}</Text> more for <Text style={styles.greenText}>FREE Delivery</Text>
+                      {isTamil ? (
+                        <>இலவச டெலிவரிக்கு மேலும் <Text style={styles.boldText}>₹{deliveryInfo.remaining.toFixed(0)}</Text> சேர்க்கவும்</>
+                      ) : (
+                        <>Add <Text style={styles.boldText}>₹{deliveryInfo.remaining.toFixed(0)}</Text> more for <Text style={styles.greenText}>FREE Delivery</Text></>
+                      )}
                     </Text>
-                    <Text style={styles.thresholdText}>Goal: ₹{deliveryInfo.threshold}</Text>
+                    <Text style={styles.thresholdText}>{isTamil ? `இலக்கு: ₹${deliveryInfo.threshold}` : `Goal: ₹${deliveryInfo.threshold}`}</Text>
                   </View>
                   <View style={styles.progressBarBg}>
                     <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
@@ -216,7 +241,7 @@ export const CartScreen = ({ navigation }) => {
 
             {/* Destination State Selector */}
             <View style={styles.stateSelectorCard}>
-              <Text style={styles.stateLabel}>Delivery Destination State</Text>
+              <Text style={styles.stateLabel}>{isTamil ? 'டெலிவரி சேருமிடம் மாநிலம்' : 'Delivery Destination State'}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statesScroll}>
                 {STATE_OPTIONS.map(st => (
                   <TouchableOpacity
@@ -234,40 +259,42 @@ export const CartScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.itemsHeader}>
-              <Text style={styles.itemsLabel}>Selected Formulations ({cartItems.length})</Text>
+              <Text style={styles.itemsLabel}>
+                {isTamil ? `தேர்ந்தெடுக்கப்பட்ட பொருட்கள் (${cartItems.length})` : `Selected Formulations (${cartItems.length})`}
+              </Text>
               <TouchableOpacity onPress={handleClearCart} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.clearCartText}>Clear All</Text>
+                <Text style={styles.clearCartText}>{isTamil ? 'அனைத்தையும் நீக்கு' : 'Clear All'}</Text>
               </TouchableOpacity>
             </View>
           </View>
         }
         ListFooterComponent={
           <View style={styles.summarySection}>
-            <Text style={styles.summaryHeading}>Bill Details</Text>
+            <Text style={styles.summaryHeading}>{t('priceDetails')}</Text>
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Item Subtotal</Text>
+              <Text style={styles.summaryLabel}>{t('subtotal')}</Text>
               <Text style={styles.summaryVal}>₹{subtotal.toFixed(0)}</Text>
             </View>
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Delivery Fee ({selectedState})</Text>
+              <Text style={styles.summaryLabel}>{isTamil ? `டெலிவரி கட்டணம் (${selectedState})` : `Delivery Fee (${selectedState})`}</Text>
               <Text style={[styles.summaryVal, deliveryCharge === 0 ? styles.freeDeliveryText : null]}>
-                {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
+                {deliveryCharge === 0 ? (isTamil ? 'இலவசம்' : 'FREE') : `₹${deliveryCharge}`}
               </Text>
             </View>
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Applicable Taxes</Text>
-              <Text style={styles.includedText}>All Inclusive</Text>
+              <Text style={styles.summaryLabel}>{isTamil ? 'பொருந்தும் வரிகள்' : 'Applicable Taxes'}</Text>
+              <Text style={styles.includedText}>{isTamil ? 'அனைத்தும் அடங்கும்' : 'All Inclusive'}</Text>
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.totalRow}>
               <View>
-                <Text style={styles.totalLabel}>Total Payable</Text>
-                <Text style={styles.totalSubtext}>Inclusive of all taxes</Text>
+                <Text style={styles.totalLabel}>{t('total')}</Text>
+                <Text style={styles.totalSubtext}>{isTamil ? 'அனைத்து வரிகளும் அடங்கும்' : 'Inclusive of all taxes'}</Text>
               </View>
               <Text style={styles.totalVal}>₹{grandTotal.toFixed(0)}</Text>
             </View>
@@ -276,7 +303,9 @@ export const CartScreen = ({ navigation }) => {
             <View style={styles.safeDeliveryBadge}>
               <Icon name="shield" size={14} color="#1B4D3E" />
               <Text style={styles.safeDeliveryText}>
-                Handcrafted & shipped with tamper-evident seal directly from Tamil Nadu
+                {isTamil
+                  ? 'தமிழ்நாட்டிலிருந்து நேரடியாக தூய்மையான பேக்கிங்குடன் அனுப்பப்படுகிறது'
+                  : 'Handcrafted & shipped with tamper-evident seal directly from Tamil Nadu'}
               </Text>
             </View>
           </View>
@@ -284,9 +313,16 @@ export const CartScreen = ({ navigation }) => {
       />
 
       {/* Luxury Checkout Bottom Bar */}
-      <View style={styles.checkoutBar}>
-        <View>
-          <Text style={styles.bottomTotalLabel}>Total Amount</Text>
+      <View
+        style={[
+          styles.checkoutBar,
+          {
+            paddingBottom: Math.max(insets.bottom, 12),
+          },
+        ]}
+      >
+        <View style={styles.totalContainer}>
+          <Text style={styles.bottomTotalLabel}>{t('total')}</Text>
           <Text style={styles.bottomTotalVal}>₹{grandTotal.toFixed(0)}</Text>
         </View>
 
@@ -295,7 +331,7 @@ export const CartScreen = ({ navigation }) => {
           onPress={handleCheckout}
           activeOpacity={0.88}
         >
-          <Text style={styles.checkoutBtnText}>Proceed to Checkout ›</Text>
+          <Text style={styles.checkoutBtnText}>{t('proceedToCheckout')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -633,14 +669,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: 'rgba(27, 77, 62, 0.08)',
     ...SHADOWS.large,
+  },
+  totalContainer: {
+    marginRight: SPACING.sm,
   },
   bottomTotalLabel: {
     fontSize: 11,
@@ -654,16 +693,21 @@ const styles = StyleSheet.create({
   },
   checkoutBtn: {
     backgroundColor: '#1B4D3E',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingVertical: 13,
     borderRadius: RADIUS.full,
+    flex: 1,
+    maxWidth: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
     ...SHADOWS.medium,
   },
   checkoutBtnText: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    textAlign: 'center',
   },
 });
 

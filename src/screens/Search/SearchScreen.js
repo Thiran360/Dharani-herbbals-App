@@ -10,8 +10,9 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Animated,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { ProductCard } from '../../components/common/ProductCard';
@@ -22,7 +23,10 @@ import { useLanguage } from '../../context/LanguageContext';
 import storage from '../../services/storage';
 import api from '../../services/api';
 
-const POPULAR_SEARCHES = [
+import { filterProductsByQuery } from '../../utils/productSearch';
+import { prefetchImages } from '../../utils/imageOptimizer';
+
+const POPULAR_SEARCHES_EN = [
   'Chemparuthi Shampoo',
   'Kuppaimeni Soap',
   'Nalangu Powder',
@@ -33,13 +37,26 @@ const POPULAR_SEARCHES = [
   'Aloe Vera Facepack',
 ];
 
-export const SearchScreen = ({ navigation }) => {
+const POPULAR_SEARCHES_TA = [
+  'செம்பருத்தி ஷாம்பு',
+  'குப்பைமேனி சோப்பு',
+  'நலங்கு மாவு',
+  'பிரண்டை ஊறுகாய்',
+  'சத்துமாவு',
+  'கஸ்தூரி மஞ்சள்',
+  'தீபா எண்ணெய்',
+  'கற்றாழை சோப்பு',
+];
+
+export const SearchScreen = ({ navigation, route }) => {
+  const { width } = useWindowDimensions();
+  const numColumns = width >= 640 ? 3 : 2;
   const { isTamil } = useLanguage();
-  const [query, setQuery] = useState('');
+  const popularSearches = isTamil ? POPULAR_SEARCHES_TA : POPULAR_SEARCHES_EN;
+  const initialQuery = route?.params?.query || route?.params?.searchQuery || route?.params?.formulation || '';
+  const [query, setQuery] = useState(initialQuery);
   const [products, setProducts] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -52,13 +69,19 @@ export const SearchScreen = ({ navigation }) => {
     // Load products and recent searches
     api.getProducts().then(prods => {
       if (Array.isArray(prods)) setProducts(prods);
-      setIsLoading(false);
     });
 
     storage.getRecentSearches().then(searches => {
       if (Array.isArray(searches)) setRecentSearches(searches);
     });
-  }, []);
+  }, [fadeAnim]);
+
+  useEffect(() => {
+    const nextQuery = route?.params?.query || route?.params?.searchQuery || route?.params?.formulation;
+    if (nextQuery && nextQuery !== query) {
+      setQuery(nextQuery);
+    }
+  }, [route?.params]);
 
   const handleSearchSubmit = () => {
     if (query.trim()) {
@@ -69,6 +92,8 @@ export const SearchScreen = ({ navigation }) => {
 
   const handleRecentClick = item => {
     setQuery(item);
+    storage.addRecentSearch(item);
+    setRecentSearches(prev => [item, ...prev.filter(q => q !== item)].slice(0, 8));
   };
 
   const handleClearRecent = async () => {
@@ -77,23 +102,20 @@ export const SearchScreen = ({ navigation }) => {
   };
 
   const searchResults = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase().trim();
-    return products.filter(p => {
-      const name = (p.name || '').toLowerCase();
-      const tamilName = (p.tamil_name || '').toLowerCase();
-      const cat = (p.category_name || '').toLowerCase();
-      const desc = (p.description || '').toLowerCase();
-      return name.includes(q) || tamilMatch(tamilName, q) || cat.includes(q) || desc.includes(q);
-    });
+    return filterProductsByQuery(products, query);
   }, [products, query]);
 
-  function tamilMatch(tamilName, q) {
-    return tamilName.includes(q);
-  }
+  // Pre-warm native disk cache for top search results
+  useEffect(() => {
+    if (searchResults && searchResults.length > 0) {
+      prefetchImages(searchResults.slice(0, 6).map(p => p.image));
+    }
+  }, [searchResults]);
+
+  const columnWidthPercent = `${(100 / numColumns).toFixed(2)}%`;
 
   const renderProductItem = ({ item }) => (
-    <View style={styles.gridItem}>
+    <View style={[styles.gridItem, { maxWidth: columnWidthPercent }]}>
       <ProductCard product={item} />
     </View>
   );
@@ -107,18 +129,21 @@ export const SearchScreen = ({ navigation }) => {
         showLogo={false}
       />
 
-      {/* Luxury Search Input Bar */}
+      {/* Water Glacier Frosted Glass Search Bar */}
       <View style={styles.searchHeader}>
         <View style={styles.searchInputWrapper}>
-          <Icon name="search" size={18} color={COLORS.primary} />
+          <View style={styles.glacierGlossHighlight} pointerEvents="none" />
+          <View style={styles.searchIconBox}>
+            <Icon name="search" size={13.5} color="#1B4D3E" />
+          </View>
           <TextInput
             style={styles.input}
             placeholder={
               isTamil
-                ? 'தயாரிப்புகள் அல்லது மூலிகைகளைத் தேடுங்கள்...'
-                : 'Search shampoos, soaps, oils, health mixes...'
+                ? 'இயற்கை மூலிகை தைலம், பொடி, தேநீர் தேடுக...'
+                : 'Search natural herbal oils, powders & teas...'
             }
-            placeholderTextColor={COLORS.textLight}
+            placeholderTextColor="#8A9E92"
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={handleSearchSubmit}
@@ -131,7 +156,7 @@ export const SearchScreen = ({ navigation }) => {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={styles.clearBtn}
             >
-              <Icon name="close" size={14} color={COLORS.textSecondary} />
+              <Icon name="close" size={12} color="#5A6E62" />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -145,24 +170,36 @@ export const SearchScreen = ({ navigation }) => {
               <View style={styles.metaBadge}>
                 <Text style={styles.metaBadgeIcon}>🌿</Text>
                 <Text style={styles.resultsCount}>
-                  Found {searchResults.length} {searchResults.length === 1 ? 'formulation' : 'formulations'} for "{query}"
+                  {isTamil
+                    ? `"${query}" - ${searchResults.length} தயாரிப்புகள் உள்ளன`
+                    : `Found ${searchResults.length} ${searchResults.length === 1 ? 'formulation' : 'formulations'} for "${query}"`}
                 </Text>
               </View>
             </View>
 
             <FlatList
+              key={`search-grid-${numColumns}`}
               data={searchResults}
               keyExtractor={item => `search-${item.id}`}
               renderItem={renderProductItem}
-              numColumns={2}
+              numColumns={numColumns}
               contentContainerStyle={styles.resultsList}
               showsVerticalScrollIndicator={false}
+              initialNumToRender={6}
+              maxToRenderPerBatch={6}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === 'android'}
+              updateCellsBatchingPeriod={50}
               ListEmptyComponent={
                 <EmptyState
                   icon="search"
-                  title="No matching formulations"
-                  subtitle={`We couldn't find any herbal remedies matching "${query}". Try searching for generic herbal names like soap, shampoo, or thailam.`}
-                  buttonText="Clear Search"
+                  title={isTamil ? 'பொருத்தமான தயாரிப்புகள் இல்லை' : 'No matching formulations'}
+                  subtitle={
+                    isTamil
+                      ? `"${query}" என்ற பெயரில் தயாரிப்புகள் எதுவும் கிடைக்கவில்லை. தைலம், சோப் அல்லது ஷாம்பூ போன்ற பெயர்களைத் தேடவும்.`
+                      : `We couldn't find any herbal remedies matching "${query}". Try searching for generic herbal names like soap, shampoo, or thailam.`
+                  }
+                  buttonText={isTamil ? 'தேடலை அழிக்க' : 'Clear Search'}
                   onButtonPress={() => setQuery('')}
                 />
               }
@@ -174,9 +211,9 @@ export const SearchScreen = ({ navigation }) => {
             {recentSearches.length > 0 ? (
               <View style={styles.recentSection}>
                 <View style={styles.sectionTitleRow}>
-                  <Text style={styles.sectionLabel}>Recent Searches</Text>
+                  <Text style={styles.sectionLabel}>{isTamil ? 'சமீபத்திய தேடல்கள்' : 'Recent Searches'}</Text>
                   <TouchableOpacity onPress={handleClearRecent} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={styles.clearText}>Clear</Text>
+                    <Text style={styles.clearText}>{isTamil ? 'நீக்கு' : 'Clear'}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -198,10 +235,12 @@ export const SearchScreen = ({ navigation }) => {
 
             {/* Popular Searches */}
             <View style={styles.popularSection}>
-              <Text style={styles.sectionLabel}>Popular Formulations</Text>
-              <Text style={styles.sectionSub}>Frequently sought traditional wellness items</Text>
+              <Text style={styles.sectionLabel}>{isTamil ? 'பிரபலமான தயாரிப்புகள்' : 'Popular Formulations'}</Text>
+              <Text style={styles.sectionSub}>
+                {isTamil ? 'அடிக்கடி தேடப்படும் பாரம்பரிய தயாரிப்புகள்' : 'Frequently sought traditional wellness items'}
+              </Text>
               <View style={styles.chipsWrap}>
-                {POPULAR_SEARCHES.map((item, idx) => (
+                {popularSearches.map((item, idx) => (
                   <TouchableOpacity
                     key={`pop-${idx}`}
                     style={[styles.chip, styles.popularChip]}
@@ -219,9 +258,13 @@ export const SearchScreen = ({ navigation }) => {
             <View style={styles.botanicalBanner}>
               <Text style={styles.botanicalBannerIcon}>🌿</Text>
               <View style={styles.botanicalBannerText}>
-                <Text style={styles.botanicalBannerTitle}>Pure Siddha & Ayurvedic Formulations</Text>
+                <Text style={styles.botanicalBannerTitle}>
+                  {isTamil ? 'தூய சித்த & ஆயுர்வேத தயாரிப்புகள்' : 'Pure Siddha & Ayurvedic Formulations'}
+                </Text>
                 <Text style={styles.botanicalBannerDesc}>
-                  Ethically harvested botanicals directly from Punjai Puliampatti, Tamil Nadu.
+                  {isTamil
+                    ? 'புஞ்சை புளியம்பட்டி, தமிழ்நாட்டிலிருந்து பெறப்பட்ட தூய இயற்கை மூலிகைகள்.'
+                    : 'Ethically harvested botanicals directly from Punjai Puliampatti, Tamil Nadu.'}
                 </Text>
               </View>
             </View>
@@ -248,26 +291,62 @@ const styles = StyleSheet.create({
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF8F5',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     borderRadius: RADIUS.full,
-    paddingHorizontal: SPACING.md,
-    height: 46,
+    paddingLeft: 5,
+    paddingRight: SPACING.md,
+    height: 40,
     borderWidth: 1.2,
-    borderColor: 'rgba(27, 77, 62, 0.14)',
+    borderColor: 'rgba(27, 77, 62, 0.22)',
+    overflow: 'hidden',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00A896',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+        shadowColor: '#00A896',
+      },
+    }),
+  },
+  glacierGlossHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 1,
+  },
+  searchIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E2F7EE',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    marginLeft: SPACING.sm,
-    fontSize: 13.5,
+    marginLeft: 10,
+    fontSize: 12.5,
     color: '#14231A',
     paddingVertical: 0,
     fontWeight: '500',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   clearBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(27, 77, 62, 0.08)',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EBF2ED',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -304,7 +383,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
   gridItem: {
-    flex: 1 / 2,
+    flex: 1,
+    maxWidth: '50%',
     padding: SPACING.xs,
   },
   suggestionsContainer: {

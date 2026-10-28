@@ -17,6 +17,10 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
+  Alert,
+  Platform,
+  FlatList,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
@@ -28,11 +32,18 @@ import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { BUSINESS_INFO, COMPANY_STATS, CORE_VALUES } from '../../constants/config';
 import { STATIC_CATEGORIES } from '../../constants/categories';
 import { useLanguage } from '../../context/LanguageContext';
+import { prefetchImages } from '../../utils/imageOptimizer';
 import api from '../../services/api';
 
 export const HomeScreen = () => {
   const navigation = useNavigation();
-  const { isTamil } = useLanguage();
+  const { width } = useWindowDimensions();
+  const horizontalCardWidth = Math.min(176, Math.max(148, Math.round(width * 0.44)));
+  const isTablet = width >= 640;
+  const featuredCardWidth = isTablet
+    ? Math.floor((width - SPACING.lg * 2 - 24) / 3)
+    : Math.floor((width - SPACING.lg * 2 - 12) / 2);
+  const { isTamil, t } = useLanguage();
 
   const [categories, setCategories] = useState(STATIC_CATEGORIES);
   const [mostLoved, setMostLoved] = useState([]);
@@ -63,9 +74,7 @@ export const HomeScreen = () => {
   const [announcementContentWidth, setAnnouncementContentWidth] = useState(0);
   const marqueeAnim = useRef(new Animated.Value(0)).current;
 
-  const announcementMsg = isTamil
-    ? 'தமிழ்நாட்டிற்குள் ₹750க்கு மேல் இலவச டெலிவரி!'
-    : 'FREE DELIVERY ON ORDERS ABOVE 750 ACROSS TAMIL NADU';
+  const announcementMsg = t('announcementDelivery');
 
   useEffect(() => {
     if (announcementContentWidth <= 0) return;
@@ -80,7 +89,7 @@ export const HomeScreen = () => {
     );
     marqueeLoop.start();
     return () => marqueeLoop.stop();
-  }, [announcementContentWidth, isTamil]);
+  }, [announcementContentWidth, isTamil, marqueeAnim]);
 
   const marqueeTranslateX = marqueeAnim.interpolate({
     inputRange: [0, 1],
@@ -109,6 +118,14 @@ export const HomeScreen = () => {
           setMostLoved(prods.value.slice(0, 8));
         }
       }
+
+      // Prefetch images for top visible products on Home screen
+      const lovedArr = loved.status === 'fulfilled' && Array.isArray(loved.value) ? loved.value : [];
+      const prodsArr = prods.status === 'fulfilled' && Array.isArray(prods.value) ? prods.value : [];
+      prefetchImages([
+        ...lovedArr.slice(0, 6).map(p => p.image),
+        ...prodsArr.slice(0, 6).map(p => p.image),
+      ], 12);
     } catch (e) {
       console.warn('Failed to load home data:', e);
     } finally {
@@ -126,14 +143,37 @@ export const HomeScreen = () => {
     loadHomeData();
   };
 
-  const handleCall = () => {
-    Linking.openURL(`tel:${BUSINESS_INFO.PHONE_PRIMARY}`).catch(() => {});
+  const handleCall = async () => {
+    const rawNumber = BUSINESS_INFO.PHONE_PRIMARY || '+919788122001';
+    const cleanNumber = rawNumber.replace(/[^0-9+]/g, '');
+    const phoneUrl = `tel:${cleanNumber}`;
+    try {
+      await Linking.openURL(phoneUrl);
+    } catch {
+      Alert.alert(
+        isTamil ? 'அழைக்க' : 'Call Specialist',
+        `${t('dialerUnavailable')}${rawNumber}`
+      );
+    }
   };
 
-  const handleWhatsApp = () => {
-    Linking.openURL(
-      `https://wa.me/${BUSINESS_INFO.WHATSAPP_NUMBER}?text=Hello%20Dharani%20Herbbals,%20I%20have%20an%20enquiry.`
-    ).catch(() => {});
+  const handleWhatsApp = async () => {
+    const waNumber = (BUSINESS_INFO.WHATSAPP_NUMBER || '919788122001').replace(/[^0-9]/g, '');
+    const msg = isTamil
+      ? 'வணக்கம் தரணி ஹெர்பல்ஸ், தயாரிப்புகள் குறித்த வழிகாட்டுதல் தேவைப்படுகிறது.'
+      : 'Hello Dharani Herbbals, I have an enquiry about your herbal products.';
+    const appUrl = `whatsapp://send?phone=${waNumber}&text=${encodeURIComponent(msg)}`;
+    const webUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
+
+    try {
+      await Linking.openURL(appUrl);
+    } catch {
+      try {
+        await Linking.openURL(webUrl);
+      } catch {
+        Alert.alert('WhatsApp', t('whatsappUnavailable'));
+      }
+    }
   };
 
   return (
@@ -196,23 +236,26 @@ export const HomeScreen = () => {
             </Animated.View>
           </View>
 
-          {/* Quick Search Bar Trigger */}
+          {/* Water Glacier Frosted Glass Search Bar */}
           <TouchableOpacity
             style={styles.searchBarTrigger}
             onPress={() => navigation.navigate('MainTabs', { screen: 'SearchTab' })}
             activeOpacity={0.88}
+            accessibilityRole="button"
+            accessibilityLabel="Search natural herbal oils, powders and teas"
           >
+            {/* Subtle Glacier Top Gloss Line */}
+            <View style={styles.glacierGlossHighlight} pointerEvents="none" />
+
+            {/* Mint-Green Circular Search Icon Badge */}
             <View style={styles.searchIconBox}>
-              <Icon name="search" size={17} color={COLORS.primary} />
+              <Icon name="search" size={13.5} color="#1B4D3E" />
             </View>
-            <Text style={styles.searchPlaceholder}>
-              {isTamil
-                ? 'மூலிகை தயாரிப்புகளைத் தேடுங்கள்...'
-                : 'Search 270+ authentic herbal formulations...'}
+
+            {/* Full-width Search Placeholder Text */}
+            <Text style={styles.searchPlaceholder} numberOfLines={1}>
+              {t('searchPlaceholder')}
             </Text>
-            <View style={styles.searchBadge}>
-              <Text style={styles.searchBadgeText}>Filter</Text>
-            </View>
           </TouchableOpacity>
 
           {/* Hero Banner Carousel */}
@@ -222,7 +265,7 @@ export const HomeScreen = () => {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleBlock}>
               <Text style={styles.sectionTitle}>
-                {isTamil ? 'பிரிவுகள் வாரியாக வாங்குக' : 'Shop by Category'}
+                {t('topCategories')}
               </Text>
               <Text style={styles.sectionSubtitle}>
                 {isTamil
@@ -236,7 +279,7 @@ export const HomeScreen = () => {
               activeOpacity={0.75}
             >
               <Text style={styles.viewAllText}>
-                {isTamil ? 'அனைத்தும் ›' : 'View All ›'}
+                {t('viewAll')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -257,25 +300,23 @@ export const HomeScreen = () => {
               <View style={styles.badgeRow}>
                 <View style={styles.sectionBadge}>
                   <Icon name="star" size={10} color="#B45309" />
-                  <Text style={styles.sectionBadgeText}>TOP RATED PICKS</Text>
+                  <Text style={styles.sectionBadgeText}>{t('topRatedBadge')}</Text>
                 </View>
               </View>
               <Text style={styles.sectionTitle}>
-                {isTamil ? 'வாடிக்கையாளர்களின் விருப்பங்கள்' : 'Our Most Loved Picks'}
+                {t('mostLovedPicks')}
               </Text>
               <Text style={styles.sectionSubtitle}>
-                {isTamil
-                  ? 'அதிகம் விரும்பப்படும் இயற்கை தயாரிப்புகள்'
-                  : 'Time-tested herbal remedies with proven results'}
+                {t('mostLovedSubtitle')}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.viewAllBtn}
-              onPress={() => navigation.navigate('ProductListScreen', { title: 'Most Loved Picks' })}
+              onPress={() => navigation.navigate('ProductListScreen', { title: t('mostLovedPicks') })}
               activeOpacity={0.75}
             >
               <Text style={styles.viewAllText}>
-                {isTamil ? 'அனைத்தும் ›' : 'See All ›'}
+                {t('seeAll')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -285,20 +326,24 @@ export const HomeScreen = () => {
               <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           ) : (
-            <ScrollView
+            <FlatList
               horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalProductsList}
-            >
-              {mostLoved.map(prod => (
+              data={mostLoved}
+              keyExtractor={item => `loved-${item.id}`}
+              renderItem={({ item }) => (
                 <ProductCard
-                  key={`loved-${prod.id}`}
-                  product={prod}
-                  width={172}
+                  product={item}
+                  width={horizontalCardWidth}
                   style={styles.horizontalCard}
                 />
-              ))}
-            </ScrollView>
+              )}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalProductsList}
+              initialNumToRender={4}
+              maxToRenderPerBatch={4}
+              windowSize={3}
+              removeClippedSubviews={Platform.OS === 'android'}
+            />
           )}
 
           {/* Highlight Brand Story Card */}
@@ -306,20 +351,20 @@ export const HomeScreen = () => {
             <View style={styles.storyDecorCircle} />
             <View style={styles.storyHeaderRow}>
               <View style={styles.storyBadge}>
-                <Text style={styles.storyBadgeText}>HERITAGE SINCE 2004</Text>
+                <Text style={styles.storyBadgeText}>{t('heritageSince2004')}</Text>
               </View>
-              <Text style={styles.storyLocation}>Punjai Puliampatti, TN</Text>
+              <Text style={styles.storyLocation}>{t('storyLocation')}</Text>
             </View>
-            <Text style={styles.storyTitle}>Rooted in Siddha Heritage</Text>
+            <Text style={styles.storyTitle}>{t('rootedInHeritage')}</Text>
             <Text style={styles.storyDesc}>
-              Our journey began in 2004 with deep research into timeless Siddha and Ayurvedic botanical wisdom, formally establishing Dharani Herbbals in 2007 to deliver chemical-free natural living to every home.
+              {t('storyDesc')}
             </Text>
             <TouchableOpacity
               style={styles.storyButton}
               onPress={() => navigation.navigate('AboutScreen')}
               activeOpacity={0.88}
             >
-              <Text style={styles.storyButtonText}>Read Our Heritage Story ›</Text>
+              <Text style={styles.storyButtonText}>{t('readHeritageStory')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -327,42 +372,41 @@ export const HomeScreen = () => {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleBlock}>
               <Text style={styles.sectionTitle}>
-                {isTamil ? 'சிறப்பு தயாரிப்புகள்' : 'Featured Formulations'}
+                {t('featuredFormulations')}
               </Text>
               <Text style={styles.sectionSubtitle}>
-                {isTamil
-                  ? '100% தூய இயற்கை ஊட்டச்சத்து'
-                  : '100% Naturally Derived Ayurvedic Care'}
+                {t('featuredSubtitle')}
               </Text>
             </View>
             <TouchableOpacity
               style={styles.viewAllBtn}
-              onPress={() => navigation.navigate('ProductListScreen', { title: 'All Products' })}
+              onPress={() => navigation.navigate('ProductListScreen', { title: t('featuredFormulations') })}
               activeOpacity={0.75}
             >
               <Text style={styles.viewAllText}>
-                {isTamil ? 'அனைத்தும் ›' : 'View All ›'}
+                {t('viewAll')}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.productsGrid}>
             {featuredProducts.slice(0, 6).map(prod => (
-              <ProductCard
+              <View
                 key={`feat-${prod.id}`}
-                product={prod}
-                style={styles.gridProductCard}
-              />
+                style={[styles.gridProductCard, { width: featuredCardWidth }]}
+              >
+                <ProductCard product={prod} />
+              </View>
             ))}
           </View>
 
           {/* Why Choose Dharani Herbbals / Core Values Bento */}
           <View style={styles.valuesSection}>
             <View style={styles.valuesHeadingBlock}>
-              <Text style={styles.valuesPillBadge}>WHY DHARANI HERBBALS</Text>
-              <Text style={styles.valuesTitle}>Crafted with Purity & Care</Text>
+              <Text style={styles.valuesPillBadge}>{t('whyDharaniPill')}</Text>
+              <Text style={styles.valuesTitle}>{t('whyDharaniTitle')}</Text>
               <Text style={styles.valuesSubtitle}>
-                Authentic Siddha standards for your family's health
+                {t('whyDharaniSubtitle')}
               </Text>
             </View>
 
@@ -370,12 +414,14 @@ export const HomeScreen = () => {
               {CORE_VALUES.map((val, idx) => (
                 <View key={`val-${idx}`} style={styles.valueCard}>
                   <View style={styles.valueIconCircle}>
-                    <Icon name={val.icon} size={22} color={COLORS.primary} />
+                    <Icon name={val.icon} size={24} color="#1B4D3E" />
                   </View>
                   <Text style={styles.valueCardTitle}>
                     {isTamil && val.titleTa ? val.titleTa : val.title}
                   </Text>
-                  <Text style={styles.valueCardDesc}>{val.description}</Text>
+                  <Text style={styles.valueCardDesc}>
+                    {isTamil && val.descriptionTa ? val.descriptionTa : val.description}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -384,7 +430,7 @@ export const HomeScreen = () => {
           {/* Authentic Company Statistics */}
           <View style={styles.statsSection}>
             <View style={styles.statsDecorGlow} />
-            <Text style={styles.statsSectionHeading}>Two Decades of Trusted Healing</Text>
+            <Text style={styles.statsSectionHeading}>{t('twoDecades')}</Text>
             <View style={styles.statsGrid}>
               {COMPANY_STATS.map((stat, idx) => (
                 <View key={`stat-${idx}`} style={styles.statBox}>
@@ -400,11 +446,11 @@ export const HomeScreen = () => {
           {/* Customer Support Card */}
           <View style={styles.supportCard}>
             <View style={styles.supportIconCircle}>
-              <Icon name="phone" size={24} color={COLORS.primary} />
+              <Icon name="phone" size={24} color="#1B4D3E" />
             </View>
-            <Text style={styles.supportTitle}>Need Help Choosing Herbs?</Text>
+            <Text style={styles.supportTitle}>{t('needHelp')}</Text>
             <Text style={styles.supportSubtitle}>
-              Our herbal wellness specialists are ready to guide you with personalized recommendations.
+              {t('needHelpSubtitle')}
             </Text>
 
             <View style={styles.supportButtonsRow}>
@@ -413,8 +459,8 @@ export const HomeScreen = () => {
                 onPress={handleCall}
                 activeOpacity={0.85}
               >
-                <Icon name="phone" size={15} color="#FFFFFF" />
-                <Text style={styles.supportBtnText}>Call Specialist</Text>
+                <Icon name="phone" size={17} color="#FFFFFF" />
+                <Text style={styles.supportBtnText}>{t('callSpecialist')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -422,8 +468,8 @@ export const HomeScreen = () => {
                 onPress={handleWhatsApp}
                 activeOpacity={0.85}
               >
-                <Icon name="whatsapp" size={16} color="#FFFFFF" />
-                <Text style={styles.supportBtnText}>WhatsApp</Text>
+                <Icon name="whatsapp" size={19} color="#FFFFFF" />
+                <Text style={styles.supportBtnText}>{t('whatsapp')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -436,13 +482,13 @@ export const HomeScreen = () => {
                 style={styles.footerBrandLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.footerTagline}>Traditional Siddha Wisdom Since 2004</Text>
+              <Text style={styles.footerTagline}>{t('footerHeritageTag')}</Text>
             </View>
             <Text style={styles.footerAddress}>
               {BUSINESS_INFO.ADDRESS.FULL}
             </Text>
             <Text style={styles.footerCopyright}>
-              © {new Date().getFullYear()} Dharani Herbbals. All rights reserved.
+              © {new Date().getFullYear()} Dharani Herbbals. {t('allRightsReserved')}
             </Text>
           </View>
         </Animated.View>
@@ -454,7 +500,7 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF8F5', // Warm ivory natural background
+    backgroundColor: '#FFFFFF', // Clean bright white theme
   },
   announcementBar: {
     backgroundColor: '#0D2818', // Deep forest pine (preserved)
@@ -482,42 +528,70 @@ const styles = StyleSheet.create({
   searchBarTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     marginHorizontal: SPACING.lg,
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    height: 48,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingLeft: 5,
+    paddingRight: SPACING.md,
+    height: 40,
     borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: 'rgba(27, 77, 62, 0.1)',
-    ...SHADOWS.small,
+    borderWidth: 1.2,
+    borderColor: 'rgba(27, 77, 62, 0.22)',
+    overflow: 'hidden',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00A896',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+        shadowColor: '#00A896',
+      },
+    }),
+  },
+  glacierGlossHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 1,
   },
   searchIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F3F7F4',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E2F7EE',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
     justifyContent: 'center',
     alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   searchPlaceholder: {
-    marginLeft: SPACING.sm,
-    fontSize: 13,
+    marginLeft: 10,
+    fontSize: 12.5,
     color: '#5A6E62',
+    fontWeight: '500',
     flex: 1,
     letterSpacing: 0.1,
-  },
-  searchBadge: {
-    backgroundColor: '#EBF2ED',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.full,
-  },
-  searchBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#1B4D3E',
-    letterSpacing: 0.3,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -588,7 +662,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandStoryCard: {
-    backgroundColor: '#0D2818',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.xl,
     borderRadius: RADIUS.xl,
@@ -596,8 +670,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
-    borderColor: 'rgba(212, 163, 115, 0.35)', // Warm gold accent
-    ...SHADOWS.medium,
+    borderColor: 'rgba(27, 77, 62, 0.12)',
+    ...SHADOWS.small,
   },
   storyDecorCircle: {
     position: 'absolute',
@@ -606,7 +680,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: 'rgba(212, 163, 115, 0.08)',
+    backgroundColor: 'rgba(167, 243, 208, 0.18)',
   },
   storyHeaderRow: {
     flexDirection: 'row',
@@ -615,46 +689,46 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   storyBadge: {
-    backgroundColor: 'rgba(212, 163, 115, 0.2)',
+    backgroundColor: '#E8F5EE',
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: RADIUS.xs,
     borderWidth: 1,
-    borderColor: '#D4A373',
+    borderColor: '#A7F3D0',
   },
   storyBadgeText: {
-    color: '#D4A373',
+    color: '#1B4D3E',
     fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   storyLocation: {
-    color: '#A3B899',
+    color: '#2E7D5A',
     fontSize: 11,
     fontWeight: '600',
   },
   storyTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#FAF8F5',
+    color: '#133E2B',
     marginBottom: 6,
     letterSpacing: 0.2,
   },
   storyDesc: {
     fontSize: 12.5,
-    color: '#C5D8C7',
+    color: '#4E6B5A',
     lineHeight: 18,
     marginBottom: SPACING.md,
   },
   storyButton: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#1B4D3E',
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: RADIUS.full,
   },
   storyButtonText: {
-    color: '#133E2B',
+    color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '800',
     letterSpacing: 0.2,
@@ -663,10 +737,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: SPACING.lg,
-    justifyContent: 'space-between',
+    gap: 12,
+    justifyContent: 'flex-start',
   },
   gridProductCard: {
-    width: '48%',
     marginBottom: SPACING.md,
   },
   valuesSection: {
@@ -708,19 +782,20 @@ const styles = StyleSheet.create({
   },
   valueCard: {
     width: '48%',
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
     marginBottom: SPACING.md,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(27, 77, 62, 0.06)',
+    borderColor: 'rgba(27, 77, 62, 0.08)',
+    ...SHADOWS.small,
   },
   valueIconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#EBF2ED',
+    backgroundColor: '#EDF7F1',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.sm,
@@ -739,12 +814,15 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   statsSection: {
-    backgroundColor: '#0D2818',
+    backgroundColor: '#F7FAF8',
     paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.lg,
     marginTop: SPACING.md,
     position: 'relative',
     overflow: 'hidden',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(27, 77, 62, 0.08)',
   },
   statsDecorGlow: {
     position: 'absolute',
@@ -753,10 +831,10 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(212, 163, 115, 0.06)',
+    backgroundColor: 'rgba(167, 243, 208, 0.22)',
   },
   statsSectionHeading: {
-    color: '#A3B899',
+    color: '#2E6F54',
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1,
@@ -777,12 +855,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 27,
     fontWeight: '900',
-    color: '#D4A373', // warm champagne gold
+    color: '#1B4D3E',
     letterSpacing: 0.5,
   },
   statLabel: {
     fontSize: 11,
-    color: '#C5D8C7',
+    color: '#4E6B5A',
     textAlign: 'center',
     marginTop: 2,
     letterSpacing: 0.2,
@@ -825,34 +903,43 @@ const styles = StyleSheet.create({
   supportButtonsRow: {
     flexDirection: 'row',
     gap: SPACING.md,
+    width: '100%',
+    paddingHorizontal: SPACING.xs,
   },
   supportBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    justifyContent: 'center',
+    height: 46,
+    paddingHorizontal: 14,
     borderRadius: RADIUS.full,
-    gap: 7,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2.5,
   },
   callBtn: {
-    backgroundColor: '#1B4D3E',
+    backgroundColor: '#1B4D3E', // Dark herbal green
   },
   waBtn: {
-    backgroundColor: '#16A34A',
+    backgroundColor: '#25D366', // Official WhatsApp green
   },
   supportBtnText: {
     color: '#FFFFFF',
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   footerContainer: {
     padding: SPACING.xl,
-    backgroundColor: '#F3EFE8', // warm sand beige
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     marginTop: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(27, 77, 62, 0.06)',
+    borderTopColor: 'rgba(27, 77, 62, 0.08)',
   },
   footerBrandRow: {
     alignItems: 'center',

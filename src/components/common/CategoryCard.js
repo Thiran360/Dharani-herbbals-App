@@ -3,7 +3,7 @@
  * Luxury botanical category card with touch micro-interactions
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, memo } from 'react';
 import {
   View,
   Text,
@@ -16,11 +16,15 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { Icon } from './Icons';
 import { useLanguage } from '../../context/LanguageContext';
+import { getLocalizedCategoryName } from '../../utils/localization';
+import { getCategoryLocalImage } from '../../constants/categories';
+import { getOptimizedImageSource } from '../../utils/imageOptimizer';
 
-export const CategoryCard = ({ category, variant = 'circle' }) => {
+const CategoryCardComponent = ({ category, variant = 'circle' }) => {
   const navigation = useNavigation();
-  const { isTamil } = useLanguage();
+  const { isTamil, language } = useLanguage();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [imageError, setImageError] = useState(false);
 
   if (!category) return null;
 
@@ -29,6 +33,7 @@ export const CategoryCard = ({ category, variant = 'circle' }) => {
       categoryId: category.id,
       categoryName: category.name,
       categoryTamil: category.nameTa,
+      title: getLocalizedCategoryName(category, language),
     });
   };
 
@@ -50,11 +55,16 @@ export const CategoryCard = ({ category, variant = 'circle' }) => {
     }).start();
   };
 
-  const imageSource = category.localImage
-    ? category.localImage
-    : category.image && category.image.startsWith('http')
-    ? { uri: category.image }
-    : require('../../assets/logo.png');
+  // 1. Guaranteed category-specific local asset
+  const localAsset = category.localImage || getCategoryLocalImage(category);
+
+  // 2. Verified backend remote image from Django API with native disk cache
+  const remoteUri = !imageError && typeof category.image === 'string' && category.image.startsWith('http')
+    ? getOptimizedImageSource(category.image, localAsset)
+    : null;
+
+  // Prefer remote image with automatic fallback to verified category-specific local asset
+  const imageSource = remoteUri || localAsset || require('../../assets/logo.png');
 
   if (variant === 'grid') {
     return (
@@ -72,25 +82,22 @@ export const CategoryCard = ({ category, variant = 'circle' }) => {
               source={imageSource}
               style={styles.gridImage}
               resizeMode="contain"
-              defaultSource={require('../../assets/logo.png')}
+              onError={() => setImageError(true)}
+              defaultSource={localAsset || require('../../assets/logo.png')}
             />
           </View>
 
           {/* Info Block */}
           <View style={styles.gridInfo}>
             <View style={styles.collectionBadge}>
-              <Text style={styles.collectionBadgeText}>HERBAL FORMULATION</Text>
+              <Text style={styles.collectionBadgeText}>
+                {isTamil ? 'மூலிகை தயாரிப்பு' : 'HERBAL FORMULATION'}
+              </Text>
             </View>
 
             <Text style={styles.gridTitle} numberOfLines={1}>
-              {category.name}
+              {getLocalizedCategoryName(category, language)}
             </Text>
-
-            {category.nameTa ? (
-              <Text style={styles.gridSubtitle} numberOfLines={1}>
-                {category.nameTa}
-              </Text>
-            ) : null}
 
             {category.description ? (
               <Text style={styles.gridDesc} numberOfLines={2}>
@@ -126,13 +133,14 @@ export const CategoryCard = ({ category, variant = 'circle' }) => {
               source={imageSource}
               style={styles.circleImage}
               resizeMode="contain"
-              defaultSource={require('../../assets/logo.png')}
+              onError={() => setImageError(true)}
+              defaultSource={localAsset || require('../../assets/logo.png')}
             />
           </View>
         </View>
 
-        <Text style={styles.circleTitle} numberOfLines={1}>
-          {isTamil && category.nameTa ? category.nameTa : category.name}
+        <Text style={styles.circleTitle} numberOfLines={2}>
+          {getLocalizedCategoryName(category, language)}
         </Text>
       </TouchableOpacity>
     </Animated.View>
@@ -143,7 +151,7 @@ const styles = StyleSheet.create({
   // Circle variant (Home screen horizontal scroll)
   circleContainer: {
     alignItems: 'center',
-    width: 82,
+    width: 84,
     marginRight: SPACING.md,
   },
   outerRing: {
@@ -179,8 +187,9 @@ const styles = StyleSheet.create({
     color: '#14231A',
     textAlign: 'center',
     marginTop: 6,
-    lineHeight: 14,
+    lineHeight: 15,
     letterSpacing: 0.1,
+    minHeight: 30,
   },
 
   // Grid variant (Categories tab)
@@ -195,8 +204,10 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   gridImageContainer: {
-    width: 115,
-    height: 125,
+    width: '32%',
+    minWidth: 95,
+    maxWidth: 125,
+    aspectRatio: 0.95,
     backgroundColor: '#F9F7F4', // Warm ivory backdrop
     justifyContent: 'center',
     alignItems: 'center',
@@ -254,5 +265,6 @@ const styles = StyleSheet.create({
   },
 });
 
+export const CategoryCard = memo(CategoryCardComponent);
 export default CategoryCard;
 

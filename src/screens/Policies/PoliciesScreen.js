@@ -16,16 +16,17 @@ import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { SHIPPING_RULES } from '../../constants/config';
 import { useLanguage } from '../../context/LanguageContext';
 
-const TABS = [
-  { id: 'shipping', label: 'Shipping & Delivery' },
-  { id: 'returns', label: 'Returns & Refund' },
-  { id: 'privacy', label: 'Privacy Policy' },
-  { id: 'terms', label: 'Terms & Conditions' },
+const getTabs = isTamil => [
+  { id: 'shipping', label: isTamil ? 'ஷிப்பிங்' : 'Shipping & Delivery' },
+  { id: 'returns', label: isTamil ? 'திரும்பப் பெறுதல்' : 'Returns & Refund' },
+  { id: 'privacy', label: isTamil ? 'தனியுரிமை' : 'Privacy Policy' },
+  { id: 'terms', label: isTamil ? 'விதிமுறைகள்' : 'Terms & Conditions' },
 ];
 
 export const PoliciesScreen = () => {
-  const { isTamil } = useLanguage();
+  const { isTamil, t } = useLanguage();
   const [activeTab, setActiveTab] = useState('shipping');
+  const tabs = getTabs(isTamil);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -134,7 +135,7 @@ export const PoliciesScreen = () => {
       {/* Tabs */}
       <View style={styles.tabContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {TABS.map(tab => {
+          {tabs.map(tab => {
             const isActive = activeTab === tab.id;
             return (
               <TouchableOpacity

@@ -11,8 +11,6 @@ import {
   TouchableOpacity,
   Share,
   StyleSheet,
-  ActivityIndicator,
-  Dimensions,
   Animated,
 } from 'react-native';
 import { Header } from '../../components/common/Header';
@@ -21,15 +19,22 @@ import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { formatProductSize, isArppuShampoo, isAloeVeraShampoo, isKadalaiMittai } from '../../utils/formatters';
+import {
+  getLocalizedProductName,
+  getLocalizedProductDescription,
+  getLocalizedCategoryName,
+} from '../../utils/localization';
+import { getOptimizedImageSource, prefetchImages } from '../../utils/imageOptimizer';
 
 export const ProductDetailsScreen = ({ route, navigation }) => {
   const { product } = route?.params || {};
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
-  const { isTamil } = useLanguage();
+  const { isTamil, t, language } = useLanguage();
+  const { isAuthenticated, user, isGuest } = useAuth();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -50,29 +55,9 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
   const imageOpacity = useRef(new Animated.Value(1)).current;
   const heartScale = useRef(new Animated.Value(1)).current;
 
-  if (!product) {
-    return (
-      <View style={styles.errorContainer}>
-        <Header showBack={true} />
-        <Text style={styles.errorText}>Product not found.</Text>
-      </View>
-    );
-  }
-
-  const inWishlist = isInWishlist(product.id);
-
-  // Extract all gallery images
-  const allImages = [
-    product.image,
-    ...(product.extra_images || []),
-    ...extraImages,
-  ].filter(img => typeof img === 'string' && img.length > 5);
-
-  const galleryImages = [...new Set(allImages)];
-
   useEffect(() => {
     // Fetch product variations, extra images, keypoints and reviews
-    if (product.id) {
+    if (product?.id) {
       api.getProductVariations(product.id).then(vars => {
         if (Array.isArray(vars) && vars.length > 0) {
           setVariations(vars);
@@ -95,17 +80,53 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
         if (Array.isArray(revs)) setReviews(revs);
       });
     }
-  }, [product.id]);
+  }, [product?.id]);
 
-  const price = typeof product.price === 'string'
-    ? parseFloat(product.price.replace(/[^\d.]/g, ''))
-    : parseFloat(product.price) || 0;
+  if (!product) {
+    return (
+      <View style={styles.errorContainer}>
+        <Header showBack={true} />
+        <Text style={styles.errorText}>Product not found.</Text>
+      </View>
+    );
+  }
 
-  const mrp = typeof product.mrp === 'string'
-    ? parseFloat(product.mrp.replace(/[^\d.]/g, ''))
-    : typeof product.originalPrice === 'string'
-    ? parseFloat(product.originalPrice.replace(/[^\d.]/g, ''))
-    : parseFloat(product.mrp || product.originalPrice) || price;
+  const inWishlist = isInWishlist(product.id);
+
+  // Extract all gallery images
+  const allImages = [
+    product.image,
+    ...(product.extra_images || []),
+    ...extraImages,
+  ].filter(img => typeof img === 'string' && img.length > 5);
+
+  const galleryImages = [...new Set(allImages)];
+
+  // Prefetch extra gallery images in background for instant thumbnail switching
+  useEffect(() => {
+    if (galleryImages && galleryImages.length > 0) {
+      prefetchImages(galleryImages);
+    }
+  }, [galleryImages]);
+
+  const isArppu = isArppuShampoo(product);
+  const isAloeVera = isAloeVeraShampoo(product);
+
+  const rawPrice = selectedVariation?.price || selectedVariation?.customer_price || product.price;
+  let price = typeof rawPrice === 'string'
+    ? parseFloat(rawPrice.replace(/[^\d.]/g, ''))
+    : parseFloat(rawPrice) || 0;
+
+  const rawMrp = selectedVariation?.mrp || product.mrp || product.originalPrice || price;
+  let mrp = typeof rawMrp === 'string'
+    ? parseFloat(rawMrp.replace(/[^\d.]/g, ''))
+    : parseFloat(rawMrp) || price;
+
+  // Requirements 3 & 4: Sell at ₹65 only, no discount badge or crossed-out old price
+  if (isArppu || isAloeVera) {
+    price = 65;
+    mrp = 65;
+  }
 
   const hasDiscount = mrp > price;
   const discountPercent = hasDiscount
@@ -146,22 +167,56 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleAddToCart = () => {
+    if (!isAuthenticated || !user?.id || isGuest) {
+      navigation.navigate('LoginScreen', {
+        pendingAction: {
+          type: 'ADD_TO_CART',
+          product,
+          quantity,
+          variation: selectedVariation,
+        },
+      });
+      return;
+    }
     addToCart(product, quantity, selectedVariation);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2400);
   };
 
   const handleBuyNow = () => {
+    if (!isAuthenticated || !user?.id || isGuest) {
+      navigation.navigate('LoginScreen', {
+        pendingAction: {
+          type: 'BUY_NOW',
+          product,
+          quantity,
+          variation: selectedVariation,
+        },
+      });
+      return;
+    }
     addToCart(product, quantity, selectedVariation);
-    navigation.navigate('MainTabs', { screen: 'CartTab' });
+    navigation.navigate('CheckoutScreen');
   };
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: `Discover authentic ${product.name} on Dharani Herbbals: https://dharaniherbbals.in/product/${product.id}`,
-        title: product.name,
-      });
+      const localizedName = getLocalizedProductName(product, language) || product.name || 'Dharani Herbbals';
+      const productUrl = `https://dharaniherbbals.in/product/${product.id}`;
+      const shareMessage = isTamil
+        ? `தரணி ஹெர்பல்ஸில் ${localizedName} வாங்க: ${productUrl}`
+        : `Discover authentic ${localizedName} on Dharani Herbbals: ${productUrl}`;
+
+      await Share.share(
+        {
+          message: shareMessage,
+          title: localizedName,
+          url: productUrl,
+        },
+        {
+          dialogTitle: isTamil ? 'பகிரவும்' : 'Share Product',
+        }
+      );
     } catch {}
   };
 
@@ -170,7 +225,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <Header
-        title={product.category_name || 'Product Details'}
+        title={getLocalizedCategoryName(product.category_name, language) || (isTamil ? 'தயாரிப்பு விவரங்கள்' : 'Product Details')}
         showBack={true}
         showLogo={false}
       />
@@ -180,13 +235,10 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
         <View style={styles.imageGalleryWrapper}>
           <View style={styles.mainImageContainer}>
             <Animated.Image
-              source={
-                currentImageUri && currentImageUri.startsWith('http')
-                  ? { uri: currentImageUri }
-                  : require('../../assets/logo.png')
-              }
+              source={getOptimizedImageSource(currentImageUri)}
               style={[styles.mainImage, { opacity: imageOpacity }]}
               resizeMode="contain"
+              defaultSource={require('../../assets/logo.png')}
             />
 
             {/* Discount Badge */}
@@ -203,7 +255,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
                 onPress={handleShare}
                 activeOpacity={0.8}
               >
-                <Icon name="sparkles" size={17} color={COLORS.textSecondary} />
+                <Icon name="share-2" size={17} color={COLORS.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionRoundBtn}
@@ -239,9 +291,10 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
                   activeOpacity={0.85}
                 >
                   <Image
-                    source={{ uri: img }}
+                    source={getOptimizedImageSource(img)}
                     style={styles.thumbImage}
                     resizeMode="contain"
+                    defaultSource={require('../../assets/logo.png')}
                   />
                 </TouchableOpacity>
               ))}
@@ -256,49 +309,61 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.brandText}>{product.brand || 'Dharani Herbbals'}</Text>
             <View style={styles.stockBadge}>
               <Text style={styles.stockBadgeText}>
-                {product.stock === 0 ? 'Out of Stock' : '🌿 In Stock • Pure Siddha'}
+                {(selectedVariation?.stock !== undefined ? selectedVariation.stock : product.stock) === 0
+                  ? (isTamil ? 'தற்போது இல்லை' : 'Out of Stock')
+                  : (isTamil ? '🌿 இருப்பில் உள்ளது • சித்த தரம்' : '🌿 In Stock • Pure Siddha')}
               </Text>
             </View>
           </View>
 
-          {/* Product Title */}
-          <Text style={styles.title}>{product.name}</Text>
+          {/* Localized Product Title */}
+          <Text style={styles.title}>
+            {getLocalizedProductName(product, language)}
+          </Text>
 
-          {/* Tamil Name */}
-          {product.tamil_name ? (
-            <Text style={styles.tamilTitle}>{product.tamil_name}</Text>
-          ) : null}
-
-          {/* Unit / Weight */}
-          {product.weight_volume || product.unit ? (
-            <Text style={styles.weightText}>
-              Net Content: {product.weight_volume} {product.unit}
-            </Text>
-          ) : null}
-
-          {/* Pricing Row */}
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>₹{price.toFixed(0)}</Text>
-            {hasDiscount ? (
-              <Text style={styles.mrp}>₹{mrp.toFixed(0)}</Text>
-            ) : null}
-            {hasDiscount ? (
-              <View style={styles.savingsPill}>
-                <Text style={styles.savingsText}>
-                  Save ₹{(mrp - price).toFixed(0)}
-                </Text>
+          {/* Pricing Row with Weight in Brackets */}
+          {(() => {
+            const currentItem = selectedVariation || product;
+            const formattedSize = isKadalaiMittai(currentItem) ? '' : formatProductSize(currentItem);
+            return (
+              <View style={styles.priceRow}>
+                <Text style={styles.price}>₹{price.toFixed(0)}</Text>
+                {formattedSize ? (
+                  <Text style={styles.priceWeight}>({formattedSize})</Text>
+                ) : null}
+                {hasDiscount ? (
+                  <Text style={styles.mrp}>₹{mrp.toFixed(0)}</Text>
+                ) : null}
+                {hasDiscount ? (
+                  <View style={styles.savingsPill}>
+                    <Text style={styles.savingsText}>
+                      {isTamil ? 'சேமிப்பு' : 'Save'} ₹{(mrp - price).toFixed(0)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
-          <Text style={styles.taxInclusive}>Inclusive of all taxes ({product.gst_percentage || 5}% GST)</Text>
+            );
+          })()}
+          <Text style={styles.taxInclusive}>
+            {isTamil
+              ? `அனைத்து வரிகளும் அடங்கும் (${product.gst_percentage || 5}% GST)`
+              : `Inclusive of all taxes (${product.gst_percentage || 5}% GST)`}
+          </Text>
 
           {/* Variations Selector if available */}
           {variations.length > 0 ? (
             <View style={styles.variationSection}>
-              <Text style={styles.sectionHeading}>Select Variant / Size:</Text>
+              <Text style={styles.sectionHeading}>{isTamil ? 'அளவு / வகை தேர்ந்தெடுக்கவும்:' : 'Select Variant / Size:'}</Text>
               <View style={styles.variationPills}>
                 {variations.map((v, i) => {
                   const isSelected = selectedVariation?.id === v.id;
+                  const formattedVarSize = formatProductSize(v);
+                  const label = formattedVarSize ||
+                    v.variation_name?.trim() ||
+                    v.name?.trim() ||
+                    v.size?.trim() ||
+                    (v.price ? `₹${parseFloat(v.price).toFixed(0)}` : `Variant ${i + 1}`);
+
                   return (
                     <TouchableOpacity
                       key={`var-${v.id || i}`}
@@ -307,7 +372,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
                       activeOpacity={0.8}
                     >
                       <Text style={[styles.varPillText, isSelected ? styles.varPillTextActive : null]}>
-                        {v.name || v.size || `${v.weight_volume} ${v.unit}`}
+                        {label}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -318,7 +383,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
 
           {/* Quantity Selector */}
           <View style={styles.quantitySection}>
-            <Text style={styles.sectionHeading}>Quantity:</Text>
+            <Text style={styles.sectionHeading}>{t('quantity')}:</Text>
             <View style={styles.quantityStepper}>
               <TouchableOpacity
                 style={styles.stepBtn}
@@ -346,7 +411,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
               activeOpacity={0.88}
             >
               <Icon name="cart" size={18} color="#1B4D3E" />
-              <Text style={styles.addToCartText}>Add to Cart</Text>
+              <Text style={styles.addToCartText}>{t('addToCart')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -354,7 +419,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
               onPress={handleBuyNow}
               activeOpacity={0.88}
             >
-              <Text style={styles.buyNowText}>Buy Now ›</Text>
+              <Text style={styles.buyNowText}>{isTamil ? 'உடனே வாங்கு ›' : 'Buy Now ›'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -365,41 +430,44 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
             <View style={styles.trustIconCircle}>
               <Icon name="leaf" size={18} color={COLORS.primary} />
             </View>
-            <Text style={styles.trustItemTitle}>100% Herbal</Text>
-            <Text style={styles.trustItemSub}>Zero chemicals</Text>
+            <Text style={styles.trustItemTitle}>{isTamil ? '100% மூலிகை' : '100% Herbal'}</Text>
+            <Text style={styles.trustItemSub}>{isTamil ? 'ரசாயனமற்றது' : 'Zero chemicals'}</Text>
           </View>
           <View style={styles.trustItem}>
             <View style={styles.trustIconCircle}>
               <Icon name="shield" size={18} color={COLORS.primary} />
             </View>
-            <Text style={styles.trustItemTitle}>Siddha Heritage</Text>
-            <Text style={styles.trustItemSub}>Since 2004</Text>
+            <Text style={styles.trustItemTitle}>{isTamil ? 'சித்த பாரம்பரியம்' : 'Siddha Heritage'}</Text>
+            <Text style={styles.trustItemSub}>{isTamil ? '2004 முதல்' : 'Since 2004'}</Text>
           </View>
           <View style={styles.trustItem}>
             <View style={styles.trustIconCircle}>
               <Icon name="truck" size={18} color={COLORS.primary} />
             </View>
-            <Text style={styles.trustItemTitle}>Fast Delivery</Text>
-            <Text style={styles.trustItemSub}>TN Free &gt;₹750</Text>
+            <Text style={styles.trustItemTitle}>{isTamil ? 'விரைவு டெலிவரி' : 'Fast Delivery'}</Text>
+            <Text style={styles.trustItemSub}>{isTamil ? 'TN இலவசம் >₹750' : 'TN Free >₹750'}</Text>
           </View>
         </View>
 
         {/* Description Accordion Section */}
-        {product.description ? (
-          <View style={styles.detailSection}>
-            <TouchableOpacity
-              style={styles.accordionHeader}
-              onPress={() => setIsDescOpen(!isDescOpen)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.detailSectionTitle}>Product Description</Text>
-              <Icon name={isDescOpen ? 'minus' : 'plus'} size={14} color={COLORS.primary} />
-            </TouchableOpacity>
-            {isDescOpen ? (
-              <Text style={styles.descriptionText}>{product.description}</Text>
-            ) : null}
-          </View>
-        ) : null}
+        {(() => {
+          const localizedDesc = getLocalizedProductDescription(product, language);
+          return localizedDesc ? (
+            <View style={styles.detailSection}>
+              <TouchableOpacity
+                style={styles.accordionHeader}
+                onPress={() => setIsDescOpen(!isDescOpen)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.detailSectionTitle}>{t('description')}</Text>
+                <Icon name={isDescOpen ? 'minus' : 'plus'} size={14} color={COLORS.primary} />
+              </TouchableOpacity>
+              {isDescOpen ? (
+                <Text style={styles.descriptionText}>{localizedDesc}</Text>
+              ) : null}
+            </View>
+          ) : null;
+        })()}
 
         {/* Key Points Accordion */}
         {keyPoints.length > 0 ? (
@@ -409,7 +477,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
               onPress={() => setIsHighlightsOpen(!isHighlightsOpen)}
               activeOpacity={0.7}
             >
-              <Text style={styles.detailSectionTitle}>Key Highlights & Benefits</Text>
+              <Text style={styles.detailSectionTitle}>{t('keyHighlights')}</Text>
               <Icon name={isHighlightsOpen ? 'minus' : 'plus'} size={14} color={COLORS.primary} />
             </TouchableOpacity>
             {isHighlightsOpen ? (
@@ -436,19 +504,19 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
             onPress={() => setIsDeliveryOpen(!isDeliveryOpen)}
             activeOpacity={0.7}
           >
-            <Text style={styles.detailSectionTitle}>Shipping & Delivery Rules</Text>
+            <Text style={styles.detailSectionTitle}>{isTamil ? 'ஷிப்பிங் & டெலிவரி விதிகள்' : 'Shipping & Delivery Rules'}</Text>
             <Icon name={isDeliveryOpen ? 'minus' : 'plus'} size={14} color={COLORS.primary} />
           </TouchableOpacity>
           {isDeliveryOpen ? (
             <View style={styles.deliveryInfoCard}>
               <Text style={styles.deliveryRuleText}>
-                • <Text style={styles.boldText}>Tamil Nadu:</Text> ₹50 flat rate. FREE delivery on orders above ₹750! (Min. order ₹110)
+                • <Text style={styles.boldText}>{isTamil ? 'தமிழ்நாடு:' : 'Tamil Nadu:'}</Text> {isTamil ? '₹50 கட்டணம். ₹750க்கு மேல் இலவச டெலிவரி! (குறைந்தபட்ச ஆர்டர் ₹110)' : '₹50 flat rate. FREE delivery on orders above ₹750! (Min. order ₹110)'}
               </Text>
               <Text style={styles.deliveryRuleText}>
-                • <Text style={styles.boldText}>South States (KL, KA, AP):</Text> ₹150 flat rate. FREE delivery above ₹1000! (Min. order ₹400)
+                • <Text style={styles.boldText}>{isTamil ? 'தென் மாநிலங்கள் (KL, KA, AP):' : 'South States (KL, KA, AP):'}</Text> {isTamil ? '₹150 கட்டணம். ₹1000க்கு மேல் இலவச டெலிவரி! (குறைந்தபட்ச ஆர்டர் ₹400)' : '₹150 flat rate. FREE delivery above ₹1000! (Min. order ₹400)'}
               </Text>
               <Text style={styles.deliveryRuleText}>
-                • <Text style={styles.boldText}>Rest of India:</Text> ₹200 flat rate. FREE delivery above ₹1000!
+                • <Text style={styles.boldText}>{isTamil ? 'மற்ற இந்திய மாநிலங்கள்:' : 'Rest of India:'}</Text> {isTamil ? '₹200 கட்டணம். ₹1000க்கு மேல் இலவச டெலிவரி!' : '₹200 flat rate. FREE delivery above ₹1000!'}
               </Text>
             </View>
           ) : null}
@@ -462,7 +530,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
             activeOpacity={0.7}
           >
             <View style={styles.reviewHeaderRow}>
-              <Text style={styles.detailSectionTitle}>Customer Reviews</Text>
+              <Text style={styles.detailSectionTitle}>{t('reviews')}</Text>
               <View style={styles.ratingBadgeRow}>
                 <Icon name="star" size={13} color={COLORS.gold} />
                 <Text style={styles.ratingScore}>{product.rating || '4.8'} / 5.0</Text>
@@ -500,7 +568,7 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
       {addedToast ? (
         <View style={styles.toast}>
           <Icon name="check" size={16} color="#FFFFFF" />
-          <Text style={styles.toastText}>Added to Cart successfully!</Text>
+          <Text style={styles.toastText}>{t('addedToCartToast')}</Text>
         </View>
       ) : null}
     </View>
@@ -533,12 +601,13 @@ const styles = StyleSheet.create({
   },
   mainImageContainer: {
     width: '100%',
-    height: 310,
+    aspectRatio: 1.15,
+    maxHeight: 380,
     backgroundColor: '#F9F7F4', // Warm ivory studio backdrop
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    padding: SPACING.lg,
+    padding: SPACING.md,
   },
   mainImage: {
     width: '90%',
@@ -663,6 +732,11 @@ const styles = StyleSheet.create({
     color: '#1B4D3E',
     letterSpacing: 0.3,
   },
+  priceWeight: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#5A6E62',
+  },
   mrp: {
     fontSize: 15,
     color: '#8F9F94',
@@ -753,40 +827,46 @@ const styles = StyleSheet.create({
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    gap: 10,
     marginTop: SPACING.lg,
   },
   addToCartBtn: {
     flex: 1,
     flexDirection: 'row',
-    gap: 6,
+    gap: 5,
     backgroundColor: '#EBF2ED',
     borderWidth: 1.5,
     borderColor: '#1B4D3E',
     borderRadius: RADIUS.full,
-    paddingVertical: 13,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addToCartText: {
     color: '#1B4D3E',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '800',
+    textAlign: 'center',
   },
   buyNowBtn: {
     flex: 1,
     backgroundColor: '#1B4D3E',
     borderRadius: RADIUS.full,
-    paddingVertical: 13,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOWS.small,
   },
   buyNowText: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
   trustGrid: {
     flexDirection: 'row',

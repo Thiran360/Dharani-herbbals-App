@@ -5,7 +5,8 @@
 
 import { API_CONFIG } from '../constants/config';
 import storage from './storage';
-import { STATIC_CATEGORIES } from '../constants/categories';
+import { STATIC_CATEGORIES, getCategoryLocalImage, getCategoryRemoteImage } from '../constants/categories';
+import { isArppuShampoo, isAloeVeraShampoo, isKadalaiMittai } from '../utils/formatters';
 
 const request = async (endpoint, options = {}) => {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`;
@@ -56,21 +57,102 @@ const request = async (endpoint, options = {}) => {
   }
 };
 
+const sanitizeProduct = p => {
+  if (!p) return p;
+  const nameLower = (p.name || '').toLowerCase();
+  const img = p.image || '';
+
+  // Fix images where backend erroneously served Vaishnavi.jpeg placeholder or missing image
+  if (img.includes('Vaishnavi.jpeg') || !img || img.length < 5) {
+    if (nameLower.includes('arappu') || nameLower.includes('aruppu')) {
+      p.image = 'https://vedanmart.com/images/herbal/12.jpeg';
+      if (!p.extra_images || p.extra_images.length === 0) {
+        p.extra_images = ['https://vedanmart.com/images/Body/VEDAN%20GREEN%20ARAPPU%20POWDER.jpeg'];
+      }
+    } else if (nameLower.includes('veppilai') || nameLower.includes('vepila') || nameLower.includes('neem')) {
+      p.image = 'https://vedanmart.com/images/Body/NEEM%20LEAVES%20POWDER.jpeg';
+      if (!p.extra_images || p.extra_images.length === 0) {
+        p.extra_images = ['https://vedanmart.com/images/Health%20&%20Wellness/veppilai%20powder.jpeg'];
+      }
+    } else if (nameLower.includes('karuveppilai') || nameLower.includes('curry leaf')) {
+      p.image = 'https://vedanmart.com/images/herbal/5.jpeg';
+      if (!p.extra_images || p.extra_images.length === 0) {
+        p.extra_images = ['https://vedanmart.com/images/Health%20&%20Wellness/veppilai%20powder.jpeg'];
+      }
+    }
+  }
+
+  if (p.id === 1292) {
+    p.image = 'https://vedanmart.com/images/herbal/12.jpeg';
+  }
+  if (p.id === 1286) {
+    p.image = 'https://vedanmart.com/images/Body/NEEM%20LEAVES%20POWDER.jpeg';
+  }
+  if (p.id === 1285) {
+    p.image = 'https://vedanmart.com/images/herbal/5.jpeg';
+  }
+
+  // Weight & Volume Catalog corrections for zero/missing weights
+  if (p.id === 1305 || isKadalaiMittai(p)) {
+    p.weight_volume = '';
+    p.unit = '';
+    p.size = '';
+  } else if (p.id === 1255 || /chemparuthi.*shampoo/i.test(p.name)) {
+    p.weight_volume = '0.125';
+    p.unit = 'ML';
+  } else if (p.id === 1250 || isAloeVeraShampoo(p)) {
+    p.weight_volume = '0.125';
+    p.unit = 'ML';
+  } else if (isArppuShampoo(p)) {
+    p.weight_volume = p.weight_volume || '0.125';
+    p.unit = p.unit || 'ML';
+  } else if (p.id === 1073 || /kandakathiri.*powder/i.test(p.name)) {
+    p.weight_volume = '0.050';
+    p.unit = 'G';
+  }
+
+  // Pricing & Offer Corrections:
+  // Arppu Shampoo: Sell at ₹65 only (remove 50% discount and crossed out ₹130)
+  if (isArppuShampoo(p)) {
+    p.price = 65;
+    p.mrp = 65;
+    p.originalPrice = 65;
+    p.original_price = 65;
+    p.customer_price = 65;
+    p.discount = 0;
+    p.discount_percent = 0;
+  }
+
+  // Aloe Vera Shampoo: Sell at ₹65 only (remove 19% discount and crossed out old price)
+  if (isAloeVeraShampoo(p)) {
+    p.price = 65;
+    p.mrp = 65;
+    p.originalPrice = 65;
+    p.original_price = 65;
+    p.customer_price = 65;
+    p.discount = 0;
+    p.discount_percent = 0;
+  }
+
+  return p;
+};
+
 export const api = {
   // PRODUCTS
   async getProducts() {
     try {
       const data = await request('/products/');
       if (Array.isArray(data) && data.length > 0) {
+        const cleaned = data.map(sanitizeProduct);
         // Cache products locally
-        await storage.setCachedProducts(data);
-        return data;
+        await storage.setCachedProducts(cleaned);
+        return cleaned;
       }
       return data;
     } catch (error) {
       console.log('api.getProducts fallback to cache:', error.message);
       const cached = await storage.getCachedProducts();
-      if (cached && cached.length > 0) return cached;
+      if (cached && cached.length > 0) return cached.map(sanitizeProduct);
       throw error;
     }
   },
@@ -79,7 +161,27 @@ export const api = {
     try {
       const res = await request('/categories/');
       if (res && res.success && Array.isArray(res.data)) {
-        return res.data;
+        return res.data.map(apiCat => {
+          const apiNameLower = (apiCat.name || '').trim().toLowerCase();
+          const staticMatch = STATIC_CATEGORIES.find(
+            s => s.id === apiCat.id || s.name.toLowerCase() === apiNameLower
+          );
+          const localImg = staticMatch?.localImage || getCategoryLocalImage(apiCat);
+          const remoteImg = (apiCat.image && typeof apiCat.image === 'string' && apiCat.image.startsWith('http'))
+            ? apiCat.image
+            : (staticMatch?.image || getCategoryRemoteImage(apiCat));
+
+          return {
+            ...staticMatch,
+            ...apiCat,
+            id: apiCat.id ?? staticMatch?.id,
+            name: apiCat.name || staticMatch?.name,
+            nameTa: staticMatch?.nameTa || apiCat.nameTa,
+            description: staticMatch?.description || apiCat.description,
+            image: remoteImg,
+            localImage: localImg,
+          };
+        });
       }
       return STATIC_CATEGORIES;
     } catch (error) {
@@ -104,7 +206,7 @@ export const api = {
   async getMostLoved() {
     try {
       const data = await request('/most-loved/');
-      if (Array.isArray(data)) return data;
+      if (Array.isArray(data)) return data.map(sanitizeProduct);
       return [];
     } catch (error) {
       console.log('api.getMostLoved error:', error.message);
@@ -146,7 +248,18 @@ export const api = {
 
   async getProductVariations(productId) {
     try {
-      return await request(`/products/${productId}/variations/`);
+      const vars = await request(`/products/${productId}/variations/`);
+      if (Array.isArray(vars)) {
+        return vars.map(v => {
+          if (productId === 1250 || isAloeVeraShampoo(v) || isArppuShampoo(v)) {
+            v.price = 65;
+            v.mrp = 65;
+            v.customer_price = 65;
+          }
+          return v;
+        });
+      }
+      return [];
     } catch {
       return [];
     }
@@ -154,23 +267,33 @@ export const api = {
 
   // AUTHENTICATION
   async loginWithMobile(mobile) {
-    return await request('/user-login/', {
+    const res = await request('/user-login/', {
       method: 'POST',
       body: JSON.stringify({
         mobile: mobile,
         phone_number: mobile,
       }),
     });
+    // Security: sanitize response, never expose server OTP in application layer
+    if (res && typeof res === 'object' && 'otp' in res) {
+      delete res.otp;
+    }
+    return res;
   },
 
   async resendOtp(mobile) {
-    return await request('/resend-otp/', {
+    const res = await request('/resend-otp/', {
       method: 'POST',
       body: JSON.stringify({
         mobile: mobile,
         phone_number: mobile,
       }),
     });
+    // Security: sanitize response, never expose server OTP in application layer
+    if (res && typeof res === 'object' && 'otp' in res) {
+      delete res.otp;
+    }
+    return res;
   },
 
   async verifyOtp({ mobile, otp, userId }) {
@@ -185,6 +308,29 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  async validateSession(userId) {
+    if (!userId) return false;
+    try {
+      const res = await request(`/address/${userId}/`);
+      if (res && (res.user_id || Array.isArray(res.addresses))) {
+        return true;
+      }
+      return false;
+    } catch (err) {
+      if (
+        err.status === 400 ||
+        err.status === 401 ||
+        err.status === 404 ||
+        (err.message && err.message.includes('No User matches'))
+      ) {
+        const authErr = new Error('Session invalid or user not found');
+        authErr.isAuthInvalid = true;
+        throw authErr;
+      }
+      throw err;
+    }
   },
 
   async getCustomer(userId) {

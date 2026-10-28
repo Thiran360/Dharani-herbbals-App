@@ -74,9 +74,11 @@ export const CategoriesScreen = () => {
           {/* Editorial Category Header Card */}
           <View style={styles.heroIntroCard}>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>HERBAL TAXONOMY</Text>
+              <Text style={styles.heroBadgeText}>{isTamil ? 'மூலிகை தொகுப்புகள்' : 'HERBAL TAXONOMY'}</Text>
             </View>
-            <Text style={styles.heroTitle}>Time-Honored Siddha Collections</Text>
+            <Text style={styles.heroTitle}>
+              {isTamil ? 'பாரம்பரிய சித்த மருத்துவ தொகுப்புகள்' : 'Time-Honored Siddha Collections'}
+            </Text>
             <Text style={styles.heroSubtitle}>
               {isTamil
                 ? 'பாரம்பரிய சித்த & ஆயுர்வேத மூலிகை மருத்துவ தயாரிப்புகள். 100% இயற்கை முறையில் தயாரிக்கப்பட்டது.'

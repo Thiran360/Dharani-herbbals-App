@@ -18,11 +18,15 @@ import { Icon } from '../../components/common/Icons';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
+import { formatProductSize } from '../../utils/formatters';
+import { getLocalizedProductName } from '../../utils/localization';
 
 export const OrderHistoryScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { addToCart } = useCart();
+  const { isTamil, t, language } = useLanguage();
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -59,26 +63,29 @@ export const OrderHistoryScreen = ({ navigation }) => {
   const renderOrderItem = ({ item }) => {
     const orderId = item.order_id || item.id || 'N/A';
     const dateStr = item.created_at
-      ? new Date(item.created_at).toLocaleDateString('en-IN', {
+      ? new Date(item.created_at).toLocaleDateString(isTamil ? 'ta-IN' : 'en-IN', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
         })
-      : 'Recent Order';
+      : (isTamil ? 'சமீபத்திய ஆர்டர்' : 'Recent Order');
     const total = parseFloat(item.total_amount || item.amount || 0).toFixed(0);
-    const status = (item.status || 'Processing').toUpperCase();
-    const isDelivered = status === 'DELIVERED';
+    const rawStatus = (item.status || 'Processing').toUpperCase();
+    const isDelivered = rawStatus === 'DELIVERED';
+    const displayStatus = isTamil
+      ? (isDelivered ? 'டெலிவரி செய்யப்பட்டது' : (rawStatus === 'CANCELLED' ? 'ரத்து செய்யப்பட்டது' : 'தயாராகிறது'))
+      : rawStatus;
 
     return (
       <View style={styles.orderCard}>
         <View style={styles.orderCardHeader}>
           <View>
-            <Text style={styles.orderNumber}>Order #{orderId}</Text>
+            <Text style={styles.orderNumber}>{isTamil ? `ஆர்டர் #${orderId}` : `Order #${orderId}`}</Text>
             <Text style={styles.orderDate}>{dateStr}</Text>
           </View>
           <View style={[styles.statusBadge, isDelivered ? styles.statusDelivered : styles.statusProcessing]}>
             <Text style={[styles.statusText, isDelivered ? styles.statusTextDelivered : styles.statusTextProcessing]}>
-              {status}
+              {displayStatus}
             </Text>
           </View>
         </View>
@@ -87,21 +94,28 @@ export const OrderHistoryScreen = ({ navigation }) => {
 
         {item.items && Array.isArray(item.items) ? (
           <View style={styles.itemsList}>
-            {item.items.map((prod, idx) => (
-              <Text key={`item-${idx}`} style={styles.itemTitle} numberOfLines={1}>
-                🌿 {prod.product_name || prod.name} (x{prod.quantity || 1})
-              </Text>
-            ))}
+            {item.items.map((prod, idx) => {
+              const formattedSize = prod.size || prod.unit || prod.variation
+                ? formatProductSize(prod.size, prod.unit || prod.variation?.unit, prod.product_name || prod.name)
+                : '';
+              return (
+                <Text key={`item-${idx}`} style={styles.itemTitle} numberOfLines={1}>
+                  🌿 {getLocalizedProductName(prod, language)}{formattedSize ? ` • ${formattedSize}` : ''} (x{prod.quantity || 1})
+                </Text>
+              );
+            })}
           </View>
         ) : (
           <Text style={styles.itemsSummary}>
-            {item.shipping_address ? `Delivery to: ${item.shipping_address.slice(0, 48)}...` : 'Authentic herbal products package'}
+            {item.shipping_address
+              ? (isTamil ? `டெலிவரி: ${item.shipping_address.slice(0, 48)}...` : `Delivery to: ${item.shipping_address.slice(0, 48)}...`)
+              : (isTamil ? 'பாரம்பரிய மூலிகை தயாரிப்பு பார்சல்' : 'Authentic herbal products package')}
           </Text>
         )}
 
         <View style={styles.orderCardFooter}>
           <View>
-            <Text style={styles.totalLabel}>Total Payable</Text>
+            <Text style={styles.totalLabel}>{isTamil ? 'மொத்தத் தொகை' : 'Total Payable'}</Text>
             <Text style={styles.totalAmount}>₹{total}</Text>
           </View>
 
@@ -111,7 +125,7 @@ export const OrderHistoryScreen = ({ navigation }) => {
             activeOpacity={0.85}
           >
             <Icon name="truck" size={13} color="#FFFFFF" />
-            <Text style={styles.trackBtnText}>Track Order ›</Text>
+            <Text style={styles.trackBtnText}>{isTamil ? 'கண்காணிக்கவும் ›' : 'Track Order ›'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -120,12 +134,14 @@ export const OrderHistoryScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header title="My Orders" showBack={true} showCart={true} showLogo={false} />
+      <Header title={isTamil ? 'என் ஆர்டர்கள்' : 'My Orders'} showBack={true} showCart={true} showLogo={false} />
 
       {isLoading ? (
         <View style={styles.centerLoader}>
           <ActivityIndicator size="large" color="#1B4D3E" />
-          <Text style={styles.loadingText}>Retrieving your order records...</Text>
+          <Text style={styles.loadingText}>
+            {isTamil ? 'ஆர்டர் விவரங்கள் பெறப்படுகின்றன...' : 'Retrieving your order records...'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -140,9 +156,13 @@ export const OrderHistoryScreen = ({ navigation }) => {
           ListEmptyComponent={
             <EmptyState
               icon="truck"
-              title="No Past Orders Found"
-              subtitle="You haven't placed any herbal orders yet. Once placed, you can follow delivery transit live right here."
-              buttonText="Start Shopping"
+              title={isTamil ? 'ஆர்டர்கள் எதுவும் இல்லை' : 'No Past Orders Found'}
+              subtitle={
+                isTamil
+                  ? 'நீங்கள் இதுவரை எந்த ஆர்டரும் செய்யவில்லை. புதிய இயற்கை மூலிகை தயாரிப்புகளை உலாவவும்.'
+                  : "You haven't placed any herbal orders yet. Once placed, you can follow delivery transit live right here."
+              }
+              buttonText={isTamil ? 'ஷாப்பிங் செய்ய' : 'Start Shopping'}
               onButtonPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
             />
           }
@@ -247,6 +267,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 4,
   },
   totalLabel: {

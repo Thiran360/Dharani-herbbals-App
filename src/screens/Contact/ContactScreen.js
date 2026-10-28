@@ -17,31 +17,39 @@ import {
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { Icon } from '../../components/common/Icons';
+import { SuccessModal } from '../../components/common/SuccessModal';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { BUSINESS_INFO } from '../../constants/config';
 import { useLanguage } from '../../context/LanguageContext';
 
 export const ContactScreen = () => {
-  const { isTamil } = useLanguage();
+  const { isTamil, t } = useLanguage();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleCall = phoneNumber => {
     Linking.openURL(`tel:${phoneNumber}`).catch(() => {
-      Alert.alert('Calling Unavailable', `Please dial ${phoneNumber} directly.`);
+      Alert.alert(t('phoneSupport'), `${t('dialerUnavailable')}${phoneNumber}`);
     });
   };
 
   const handleWhatsApp = () => {
-    Linking.openURL(
-      `https://wa.me/${BUSINESS_INFO.WHATSAPP_NUMBER}?text=Hi%20Dharani%20Herbbals,%20I%20have%20an%20enquiry%20regarding%20your%20products.`
-    ).catch(() => {
-      Alert.alert('WhatsApp Unavailable', 'Could not open WhatsApp.');
-    });
+    const waNumber = (BUSINESS_INFO.WHATSAPP_NUMBER || '919788122001').replace(/[^0-9]/g, '');
+    const msg = encodeURIComponent(
+      isTamil
+        ? 'வணக்கம் தரணி ஹெர்பல்ஸ், தயாரிப்புகள் குறித்த வழிகாட்டுதல் தேவைப்படுகிறது.'
+        : 'Hello Dharani Herbbals, I have an enquiry regarding your herbal products.'
+    );
+    Linking.openURL(`whatsapp://send?phone=${waNumber}&text=${msg}`)
+      .catch(() => Linking.openURL(`https://wa.me/${waNumber}?text=${msg}`))
+      .catch(() => {
+        Alert.alert(t('whatsapp'), t('whatsappUnavailable'));
+      });
   };
 
   const handleEmail = emailAddr => {
@@ -54,7 +62,7 @@ export const ContactScreen = () => {
 
   const handleSubmitEnquiry = () => {
     if (!name.trim() || !phone.trim() || !message.trim()) {
-      Alert.alert('Required Fields', 'Please enter your name, phone number, and enquiry message.');
+      Alert.alert(t('required'), isTamil ? 'உங்கள் பெயர், தொலைபேசி எண் மற்றும் செய்தியை உள்ளிடவும்.' : 'Please enter your name, phone number, and enquiry message.');
       return;
     }
 
@@ -65,10 +73,7 @@ export const ContactScreen = () => {
       setEmail('');
       setPhone('');
       setMessage('');
-      Alert.alert(
-        'Message Sent',
-        'Thank you! Your enquiry has been received. Our wellness team will contact you shortly.'
-      );
+      setShowSuccessModal(true);
     }, 1200);
   };
 
@@ -83,9 +88,9 @@ export const ContactScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Luxury Hero Banner */}
         <View style={styles.heroBanner}>
-          <Text style={styles.heroTitle}>Get In Touch</Text>
+          <Text style={styles.heroTitle}>{t('getInTouch')}</Text>
           <Text style={styles.heroSubtitle}>
-            Have questions about our Siddha formulations, order status, or wellness guidance? Our dispensary team is here to assist.
+            {t('contactSubtitle')}
           </Text>
         </View>
 
@@ -96,8 +101,8 @@ export const ContactScreen = () => {
             <View style={styles.iconCircle}>
               <Icon name="phone" size={20} color="#1B4D3E" />
             </View>
-            <Text style={styles.cardTitle}>Phone Support</Text>
-            <Text style={styles.cardDesc}>Mon - Sat, 9:00 AM - 7:00 PM</Text>
+            <Text style={styles.cardTitle}>{t('phoneSupport')}</Text>
+            <Text style={styles.cardDesc}>{isTamil ? 'திங்கள் - சனி, காலை 9:00 - இரவு 7:00' : 'Mon - Sat, 9:00 AM - 7:00 PM'}</Text>
             <TouchableOpacity onPress={() => handleCall(BUSINESS_INFO.PHONE_PRIMARY)} activeOpacity={0.7}>
               <Text style={styles.clickableLink}>{BUSINESS_INFO.PHONE_PRIMARY}</Text>
             </TouchableOpacity>
@@ -111,11 +116,11 @@ export const ContactScreen = () => {
             <View style={[styles.iconCircle, { backgroundColor: '#EBF2ED' }]}>
               <Icon name="whatsapp" size={22} color="#16A34A" />
             </View>
-            <Text style={styles.cardTitle}>Instant WhatsApp Chat</Text>
-            <Text style={styles.cardDesc}>Fast responses for order queries & product advice</Text>
+            <Text style={styles.cardTitle}>{t('whatsappSupport')}</Text>
+            <Text style={styles.cardDesc}>{t('whatsappFastResponse')}</Text>
             <TouchableOpacity style={styles.waActionBtn} onPress={handleWhatsApp} activeOpacity={0.85}>
               <Icon name="whatsapp" size={15} color="#FFFFFF" />
-              <Text style={styles.waActionBtnText}>Chat on WhatsApp ›</Text>
+              <Text style={styles.waActionBtnText}>{t('chatOnWhatsApp')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -124,8 +129,8 @@ export const ContactScreen = () => {
             <View style={[styles.iconCircle, { backgroundColor: '#EFF6FF' }]}>
               <Icon name="mail" size={20} color="#2563EB" />
             </View>
-            <Text style={styles.cardTitle}>Email Support</Text>
-            <Text style={styles.cardDesc}>For wholesale, distribution & general queries</Text>
+            <Text style={styles.cardTitle}>{t('emailSupport')}</Text>
+            <Text style={styles.cardDesc}>{isTamil ? 'மொத்த விற்பனை மற்றும் பொதுவான கேள்விகளுக்கு' : 'For wholesale, distribution & general queries'}</Text>
             <TouchableOpacity onPress={() => handleEmail(BUSINESS_INFO.EMAIL_PRIMARY)} activeOpacity={0.7}>
               <Text style={styles.clickableLink}>{BUSINESS_INFO.EMAIL_PRIMARY}</Text>
             </TouchableOpacity>
@@ -139,9 +144,9 @@ export const ContactScreen = () => {
             <View style={[styles.iconCircle, { backgroundColor: '#FEF9EE' }]}>
               <Icon name="clock" size={20} color="#C8963E" />
             </View>
-            <Text style={styles.cardTitle}>Store & Office Hours</Text>
+            <Text style={styles.cardTitle}>{t('storeHours')}</Text>
             <Text style={styles.hoursText}>{BUSINESS_INFO.HOURS}</Text>
-            <Text style={styles.hoursSub}>Sunday: Weekly Holiday</Text>
+            <Text style={styles.hoursSub}>{t('sundayHoliday')}</Text>
           </View>
         </View>
 
@@ -151,7 +156,7 @@ export const ContactScreen = () => {
             <View style={styles.addrIconHalo}>
               <Icon name="map-pin" size={18} color="#1B4D3E" />
             </View>
-            <Text style={styles.addrCardTitle}>Registered Head Office & Store</Text>
+            <Text style={styles.addrCardTitle}>{t('storeAddress')}</Text>
           </View>
 
           <Text style={styles.addressLines}>
@@ -163,20 +168,20 @@ export const ContactScreen = () => {
           </Text>
 
           <TouchableOpacity style={styles.mapBtn} onPress={handleOpenMap} activeOpacity={0.8}>
-            <Text style={styles.mapBtnText}>Open in Google Maps ›</Text>
+            <Text style={styles.mapBtnText}>{t('openGoogleMaps')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Customer Enquiry Form */}
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Send Us a Message</Text>
+          <Text style={styles.formTitle}>{t('sendMessage')}</Text>
           <Text style={styles.formSubtitle}>
-            Drop our herbal wellness consultants a message. We usually respond within 24 hours.
+            {t('sendMessageSub')}
           </Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Your Full Name *"
+            placeholder={isTamil ? 'உங்கள் முழுப் பெயர் *' : 'Your Full Name *'}
             placeholderTextColor="#8A9E92"
             value={name}
             onChangeText={setName}
@@ -184,7 +189,7 @@ export const ContactScreen = () => {
 
           <TextInput
             style={styles.input}
-            placeholder="10-digit Phone Number *"
+            placeholder={isTamil ? '10 இலக்க தொலைபேசி எண் *' : '10-digit Phone Number *'}
             placeholderTextColor="#8A9E92"
             keyboardType="phone-pad"
             maxLength={10}
@@ -194,7 +199,7 @@ export const ContactScreen = () => {
 
           <TextInput
             style={styles.input}
-            placeholder="Email Address (Optional)"
+            placeholder={isTamil ? 'மின்னஞ்சல் முகவரி (விருப்பத்தேர்வு)' : 'Email Address (Optional)'}
             placeholderTextColor="#8A9E92"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -204,7 +209,7 @@ export const ContactScreen = () => {
 
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Your message or product enquiry... *"
+            placeholder={isTamil ? 'உங்கள் செய்தி அல்லது தயாரிப்பு விவரக் கோரிக்கை... *' : 'Your message or product enquiry... *'}
             placeholderTextColor="#8A9E92"
             multiline
             value={message}
@@ -220,11 +225,22 @@ export const ContactScreen = () => {
             {isSubmitting ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.submitBtnText}>Submit Message ›</Text>
+              <Text style={styles.submitBtnText}>{t('submitMessage')}</Text>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Success Celebration Modal Matching User Mockup */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title={isTamil ? 'செய்தி அனுப்பப்பட்டது!' : 'Message Sent!'}
+        subtitle={isTamil ? 'தாரணி ஹெர்பல்ஸ் வாடிக்கையாளர் சேவை' : 'Dharani Herbals Customer Care'}
+        message={isTamil ? 'உங்கள் செய்தி வெற்றிகரமாக பெறப்பட்டது. எங்கள் சித்த மருத்துவர் அல்லது சேவை குழு விரைவில் உங்களைத் தொடர்புகொள்வர்.' : 'Thank you for reaching out! Our wellness specialist will connect with you shortly.'}
+        buttonText={isTamil ? 'சரி →' : 'Done →'}
+        onPress={() => setShowSuccessModal(false)}
+        onClose={() => setShowSuccessModal(false)}
+      />
     </View>
   );
 };

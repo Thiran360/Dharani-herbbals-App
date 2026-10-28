@@ -7,22 +7,24 @@ import {
   View,
   Text,
   Image,
-  Dimensions,
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { HERO_BANNERS } from '../../constants/banners';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useLanguage } from '../../context/LanguageContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_WIDTH = SCREEN_WIDTH;
 const BANNER_HEIGHT = 205;
 
 export const BannerSlider = () => {
   const navigation = useNavigation();
+  const { width: screenWidth } = useWindowDimensions();
+  const circleSize = Math.min(148, Math.round(screenWidth * 0.38));
+  const productImageSize = Math.round(circleSize * 0.92);
   const { isTamil } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef(null);
@@ -33,7 +35,7 @@ export const BannerSlider = () => {
       setActiveIndex(prevIndex => {
         const nextIndex = (prevIndex + 1) % HERO_BANNERS.length;
         flatListRef.current?.scrollToOffset({
-          offset: nextIndex * SCREEN_WIDTH,
+          offset: nextIndex * screenWidth,
           animated: true,
         });
         return nextIndex;
@@ -41,7 +43,7 @@ export const BannerSlider = () => {
     }, 4800);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [screenWidth]);
 
   const handleBannerPress = banner => {
     if (banner.categoryId) {
@@ -54,7 +56,7 @@ export const BannerSlider = () => {
 
   const onMomentumScrollEnd = event => {
     const slideIndex = Math.round(
-      event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+      event.nativeEvent.contentOffset.x / screenWidth
     );
     if (slideIndex >= 0 && slideIndex < HERO_BANNERS.length) {
       setActiveIndex(slideIndex);
@@ -62,19 +64,19 @@ export const BannerSlider = () => {
   };
 
   const renderBannerItem = ({ item }) => {
-    const primaryBg = item.bgGradient ? item.bgGradient[0] : COLORS.primary;
+    const primaryBg = item.bgGradient ? item.bgGradient[0] : '#CEE5D6';
+    const imageSource =
+      Platform.OS === 'android' && item.drawableName
+        ? { uri: item.drawableName }
+        : item.image;
 
     return (
       <TouchableOpacity
-        style={styles.bannerContainer}
+        style={[styles.bannerContainer, { width: screenWidth }]}
         onPress={() => handleBannerPress(item)}
         activeOpacity={0.92}
       >
         <View style={[styles.bannerCardBg, { backgroundColor: primaryBg }]}>
-          {/* Subtle Decorative Ambient Rings */}
-          <View style={styles.ambientCircleOne} />
-          <View style={styles.ambientCircleTwo} />
-
           {/* Text Content */}
           <View style={styles.textContent}>
             {item.tag ? (
@@ -82,17 +84,15 @@ export const BannerSlider = () => {
                 style={[
                   styles.tagBadge,
                   {
-                    backgroundColor: item.accentColor
-                      ? `${item.accentColor}33`
-                      : 'rgba(255, 255, 255, 0.2)',
-                    borderColor: item.accentColor || '#D4A373',
+                    backgroundColor: 'rgba(255, 255, 255, 0.90)',
+                    borderColor: item.accentColor || '#14532D',
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.tagText,
-                    { color: item.accentColor || '#FAF8F5' },
+                    { color: item.accentColor || '#14532D' },
                   ]}
                 >
                   {item.tag}
@@ -115,13 +115,25 @@ export const BannerSlider = () => {
             </View>
           </View>
 
-          {/* Product Image */}
+          {/* Product Image in Single Circular Frame */}
           <View style={styles.imageContainer}>
-            <Image
-              source={item.image}
-              style={styles.productImage}
-              resizeMode="contain"
-            />
+            <View
+              style={[
+                styles.sliderCircleFrame,
+                {
+                  width: circleSize,
+                  height: circleSize,
+                  borderRadius: circleSize / 2,
+                },
+              ]}
+            >
+              <Image
+                source={imageSource}
+                defaultSource={item.image}
+                style={{ width: productImageSize, height: productImageSize }}
+                resizeMode="contain"
+              />
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -140,7 +152,7 @@ export const BannerSlider = () => {
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onMomentumScrollEnd}
         decelerationRate="fast"
-        snapToInterval={SCREEN_WIDTH}
+        snapToInterval={screenWidth}
         snapToAlignment="start"
         contentContainerStyle={styles.listContent}
       />
@@ -169,7 +181,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   bannerContainer: {
-    width: SCREEN_WIDTH,
     height: BANNER_HEIGHT,
     overflow: 'hidden',
   },
@@ -180,24 +191,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     overflow: 'hidden',
     position: 'relative',
-  },
-  ambientCircleOne: {
-    position: 'absolute',
-    right: -40,
-    top: -40,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  ambientCircleTwo: {
-    position: 'absolute',
-    left: '20%',
-    bottom: -60,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(27, 77, 62, 0.12)',
   },
   textContent: {
     flex: 1.15,
@@ -214,32 +210,43 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   tagText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: '#0D3522',
+    fontSize: 17.5,
     fontWeight: '800',
-    lineHeight: 23,
+    lineHeight: 22,
     marginBottom: 4,
     letterSpacing: 0.2,
   },
   subtitle: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 12,
+    color: '#264E38',
+    fontSize: 11.5,
     lineHeight: 16,
-    marginBottom: 12,
+    marginBottom: 10,
+    fontWeight: '500',
   },
   shopNowBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: '#1B4D3E',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1B4D3E',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+        shadowColor: '#1B4D3E',
+      },
+    }),
   },
   shopNowText: {
     color: '#FFFFFF',
@@ -253,10 +260,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 2,
   },
-  productImage: {
-    width: '100%',
-    height: '100%',
+  sliderCircleFrame: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#82BA9A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1B4D3E',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.14,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 3,
+        shadowColor: '#1B4D3E',
+      },
+    }),
   },
+  productImage: {},
   paginationDots: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -268,7 +292,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#D1DCD4',
+    backgroundColor: '#A3CBB3',
   },
   activeDot: {
     width: 22,

@@ -60,18 +60,23 @@ export const CartProvider = ({ children }) => {
       }
 
       if (items.length > 0) {
-        const formatted = items.map(item => ({
-          id: item.product_id || item.id,
-          cartItemId: item.id || item.cartItemId,
-          name: item.product_name || item.name,
-          tamil_name: item.tamil_name || item.product_name || item.name,
-          image: item.product_image || item.image,
-          price: parseFloat(item.price) || 0,
-          quantity: item.quantity || 1,
-          variation_id: item.variation_id || null,
-          variation_name: item.variation_name || '',
-          gst_percentage: parseFloat(item.gst_percentage) || 5,
-        }));
+        const cachedProducts = (await storage.getCachedProducts()) || [];
+        const formatted = items.map(item => {
+          const prodId = item.product_id || item.id;
+          const matchedProd = cachedProducts.find(p => p.id === prodId);
+          return {
+            id: prodId,
+            cartItemId: item.id || item.cartItemId,
+            name: item.product_name || item.name || matchedProd?.name || '',
+            tamil_name: item.tamil_name || matchedProd?.tamil_name || '',
+            image: item.product_image || item.image || matchedProd?.image || '',
+            price: parseFloat(item.price) || (matchedProd ? parseFloat(matchedProd.price) : 0),
+            quantity: item.quantity || 1,
+            variation_id: item.variation_id || null,
+            variation_name: item.variation_name || '',
+            gst_percentage: parseFloat(item.gst_percentage) || 5,
+          };
+        });
         setCartItems(formatted);
         await storage.setCart(formatted);
       }

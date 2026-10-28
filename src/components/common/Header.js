@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,9 +35,12 @@ export const Header = ({
 }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { totalItemCount } = useCart();
   const { wishlistCount } = useWishlist();
   const { language, setLanguage, isTamil } = useLanguage();
+
+  const isNarrow = width < 360;
 
   // Dynamic top padding to ensure header is NEVER hidden behind camera notch/hole on ANY mobile
   const topInset = Math.max(
@@ -63,12 +67,12 @@ export const Header = ({
         <View style={styles.leftRow}>
           {showBack ? (
             <TouchableOpacity
-              style={styles.backButton}
+              style={[styles.backButton, isNarrow && styles.backButtonNarrow]}
               onPress={handleBack}
               activeOpacity={0.75}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Icon name="back" size={20} color={COLORS.primary} />
+              <Icon name="back" size={isNarrow ? 18 : 20} color={COLORS.primary} />
             </TouchableOpacity>
           ) : null}
 
@@ -78,60 +82,69 @@ export const Header = ({
               onPress={() => navigation.navigate('MainTabs', { screen: 'HomeTab' })}
               activeOpacity={0.85}
             >
-              <View style={styles.logoWrapper}>
-                <AnimatedLogo size={38} />
+              <View style={[styles.logoWrapper, isNarrow && { width: 32, height: 32 }]}>
+                <AnimatedLogo size={isNarrow ? 32 : 38} />
               </View>
-              <View style={styles.brandTitleContainer}>
+              <View style={[styles.brandTitleContainer, isNarrow && { marginLeft: 6 }]}>
                 <Image
                   source={require('../../assets/brand_logotype_horizontal.png')}
-                  style={styles.brandLogotype}
+                  style={[
+                    styles.brandLogotype,
+                    isNarrow && { width: Math.min(130, Math.round(width * 0.32)), height: 16 },
+                  ]}
                   resizeMode="contain"
                 />
-                <Text style={styles.brandSubtitle} numberOfLines={1}>
+                <Text style={[styles.brandSubtitle, isNarrow && { fontSize: 8.5 }]} numberOfLines={1}>
                   {isTamil ? '100% இயற்கை நலவாழ்வு' : '100% Natural Wellness'}
                 </Text>
               </View>
             </TouchableOpacity>
           ) : (
-            <Text style={styles.titleText} numberOfLines={1}>
+            <Text
+              style={[styles.titleText, isNarrow && { fontSize: 15 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {title}
             </Text>
           )}
         </View>
 
         {/* Right Side: Language Toggle + Wishlist + Cart */}
-        <View style={styles.rightRow}>
+        <View style={[styles.rightRow, isNarrow && { gap: 5 }]}>
           {showLanguage ? (
             <TouchableOpacity
-              style={styles.langPill}
+              style={[styles.langPill, isNarrow && styles.langPillNarrow]}
               onPress={toggleLanguage}
               activeOpacity={0.75}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             >
-              <Text style={styles.langText}>{language === 'en' ? 'தமிழ்' : 'EN'}</Text>
+              <Icon name="languages" size={isNarrow ? 11 : 13} color="#133E2B" />
+              <Text style={[styles.langText, isNarrow && { fontSize: 10 }]}>{language === 'en' ? 'தமிழ்' : 'EN'}</Text>
             </TouchableOpacity>
           ) : null}
 
           {showSearch ? (
             <TouchableOpacity
-              style={styles.iconButton}
+              style={[styles.iconButton, isNarrow && styles.iconButtonNarrow]}
               onPress={() => navigation.navigate('MainTabs', { screen: 'SearchTab' })}
               activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             >
-              <Icon name="search" size={19} color={COLORS.text} />
+              <Icon name="search" size={isNarrow ? 17 : 19} color={COLORS.text} />
             </TouchableOpacity>
           ) : null}
 
           {showWishlist ? (
             <TouchableOpacity
-              style={styles.iconButton}
+              style={[styles.iconButton, isNarrow && styles.iconButtonNarrow]}
               onPress={() => navigation.navigate('WishlistScreen')}
               activeOpacity={0.75}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             >
               <Icon
                 name={wishlistCount > 0 ? 'heart-filled' : 'heart'}
-                size={20}
+                size={isNarrow ? 18 : 20}
                 color={wishlistCount > 0 ? '#C25E3E' : COLORS.textSecondary}
               />
               {wishlistCount > 0 ? (
@@ -146,12 +159,12 @@ export const Header = ({
 
           {showCart ? (
             <TouchableOpacity
-              style={[styles.iconButton, styles.cartButton]}
+              style={[styles.iconButton, isNarrow && styles.iconButtonNarrow, styles.cartButton]}
               onPress={() => navigation.navigate('MainTabs', { screen: 'CartTab' })}
               activeOpacity={0.75}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             >
-              <Icon name="cart" size={20} color={COLORS.primary} focused={true} />
+              <Icon name="cart" size={isNarrow ? 18 : 20} color={COLORS.primary} focused={true} />
               {totalItemCount > 0 ? (
                 <View style={[styles.badgeContainer, styles.cartBadge]}>
                   <Text style={styles.cartBadgeText}>
@@ -199,6 +212,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: SPACING.sm,
   },
+  backButtonNarrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 6,
+  },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -241,12 +260,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   langPill: {
-    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: RADIUS.full,
     backgroundColor: '#EAF1EB',
     borderWidth: 1,
     borderColor: 'rgba(27, 77, 62, 0.25)',
+  },
+  langPillNarrow: {
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    gap: 2,
   },
   langText: {
     fontSize: 11,
@@ -264,6 +291,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(27, 77, 62, 0.08)',
     position: 'relative',
+  },
+  iconButtonNarrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   cartButton: {
     backgroundColor: '#EBF2ED',

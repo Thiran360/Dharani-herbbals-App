@@ -70,18 +70,18 @@ export const SHIPPING_RULES = {
     name: 'Tamil Nadu',
     rate: 50,
     freeThreshold: 750,
-    minOrder: 110,
+    minOrder: 0,
   },
   SOUTH_STATES: {
     states: ['Kerala', 'Karnataka', 'Andhra Pradesh'],
     rate: 150,
     freeThreshold: 1000,
-    minOrder: 400,
+    minOrder: 0,
   },
   REST_OF_INDIA: {
     rate: 200,
     freeThreshold: 1000,
-    minOrder: 500,
+    minOrder: 0,
   },
 };
 
@@ -97,25 +97,29 @@ export const CORE_VALUES = [
     title: 'Quality First',
     titleTa: 'உயர்ந்த தரம்',
     description: 'Maintaining consistent quality, authenticity, and care in every formulation.',
+    descriptionTa: 'ஒவ்வொரு தயாரிப்பிலும் நிலையான தரம் மற்றும் தூய்மை பேணப்படுகிறது.',
     icon: 'shield',
   },
   {
     title: 'Natural & Safe',
     titleTa: 'இயற்கை & பாதுகாப்பானது',
     description: 'Crafted with carefully selected natural ingredients, ensuring quality and purity.',
+    descriptionTa: 'கவனமாக தேர்ந்தெடுக்கப்பட்ட இயற்கை மூலிகைகளால் பாதுகாப்பாக தயாரிக்கப்பட்டது.',
     icon: 'leaf',
   },
   {
     title: 'Rooted in Tradition',
-    titleTa: 'பாரம்பரியம்',
+    titleTa: 'பாரம்பரிய முறை',
     description: 'Generations of Siddha wisdom combined with contemporary herbal expertise.',
-    icon: 'sparkles',
+    descriptionTa: 'தலைமுறை தலைமுறையாக தொடரும் பாரம்பரிய சித்த மருத்துவ அறிவு மற்றும் நவீன நிபுணத்துவம்.',
+    icon: 'tradition',
   },
   {
     title: 'Customer Focused',
     titleTa: 'வாடிக்கையாளர் திருப்தி',
     description: 'We listen to our customers and continuously improve our products based on feedback.',
-    icon: 'heart',
+    descriptionTa: 'வாடிக்கையாளர்களின் கருத்துக்களைக் கேட்டு தொடர்ந்து தரத்தை மேம்படுத்துகிறோம்.',
+    icon: 'customer',
   },
 ];
 

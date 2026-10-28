@@ -15,19 +15,21 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Icon } from '../../components/common/Icons';
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../../constants/theme';
+import { SuccessModal } from '../../components/common/SuccessModal';
+import { SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import storage from '../../services/storage';
 import api from '../../services/api';
 
-const STATES_LIST = ['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra', 'Delhi', 'Other'];
-
 export const AddressesScreen = () => {
   const { user } = useAuth();
+  const { isTamil, t } = useLanguage();
   const [addresses, setAddresses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,34 +42,35 @@ export const AddressesScreen = () => {
   const [state, setState] = useState('Tamil Nadu');
   const [pincode, setPincode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  const fetchAddresses = async () => {
-    try {
-      if (user?.id) {
-        const remoteAddrs = await api.getAddresses(user.id);
-        if (Array.isArray(remoteAddrs) && remoteAddrs.length > 0) {
-          setAddresses(remoteAddrs);
-          await storage.setAddresses(remoteAddrs);
-          setIsLoading(false);
-          return;
-        }
-      }
-      const localAddrs = await storage.getAddresses();
-      setAddresses(localAddrs || []);
-    } catch (e) {
-      console.warn('Addresses error:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        if (user?.id) {
+          const remoteAddrs = await api.getAddresses(user.id);
+          if (Array.isArray(remoteAddrs) && remoteAddrs.length > 0) {
+            setAddresses(remoteAddrs);
+            await storage.setAddresses(remoteAddrs);
+            setIsLoading(false);
+            return;
+          }
+        }
+        const localAddrs = await storage.getAddresses();
+        setAddresses(localAddrs || []);
+      } catch (e) {
+        console.warn('Addresses error:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchAddresses();
   }, [user]);
 
   const handleSaveAddress = async () => {
     if (!fullName.trim() || !phone.trim() || !street.trim() || !city.trim() || !pincode.trim()) {
-      Alert.alert('Required Fields', 'Please fill in all the required address fields.');
+      Alert.alert(t('required'), isTamil ? 'தேவையான அனைத்து முகவரி விவரங்களையும் நிரப்பவும்.' : 'Please fill in all the required address fields.');
       return;
     }
 
@@ -104,27 +107,31 @@ export const AddressesScreen = () => {
     setStreet('');
     setCity('');
     setPincode('');
-    Alert.alert('Success', 'Delivery address saved successfully!');
+    setShowSuccessModal(true);
   };
 
   const handleDeleteAddress = addressId => {
-    Alert.alert('Delete Address', 'Are you sure you want to delete this address?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const updated = addresses.filter(a => (a.id || a.address_id) !== addressId);
-          setAddresses(updated);
-          await storage.setAddresses(updated);
-          try {
-            if (user?.id && !user.isGuest) {
-              await api.deleteAddress(addressId);
-            }
-          } catch {}
+    Alert.alert(
+      isTamil ? 'முகவரியை நீக்கவா?' : 'Delete Address',
+      isTamil ? 'நிச்சயமாக இந்த முகவரியை நீக்க விரும்புகிறீர்களா?' : 'Are you sure you want to delete this address?',
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('delete'),
+          style: 'destructive',
+          onPress: async () => {
+            const updated = addresses.filter(a => (a.id || a.address_id) !== addressId);
+            setAddresses(updated);
+            await storage.setAddresses(updated);
+            try {
+              if (user?.id && !user.isGuest) {
+                await api.deleteAddress(addressId);
+              }
+            } catch {}
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const renderAddressCard = ({ item }) => {
@@ -159,7 +166,7 @@ export const AddressesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Header title="Saved Addresses" showBack={true} showCart={false} showLogo={false} />
+      <Header title={t('savedAddresses')} showBack={true} showCart={false} showLogo={false} />
 
       {isLoading ? (
         <View style={styles.loaderCenter}>
@@ -179,15 +186,15 @@ export const AddressesScreen = () => {
               activeOpacity={0.88}
             >
               <Icon name="plus" size={16} color="#FFFFFF" />
-              <Text style={styles.addBtnText}>Add New Delivery Address</Text>
+              <Text style={styles.addBtnText}>{t('addAddress')}</Text>
             </TouchableOpacity>
           }
           ListEmptyComponent={
             <EmptyState
               icon="map-pin"
-              title="No Saved Addresses"
-              subtitle="Save your home, office, or family delivery addresses for a seamless checkout experience."
-              buttonText="Add Address"
+              title={t('noSavedAddresses')}
+              subtitle={isTamil ? 'எளிதான செக்அவுட்டிற்கு உங்கள் வீட்டு அல்லது அலுவலக முகவரிகளை சேமியுங்கள்.' : 'Save your home, office, or family delivery addresses for a seamless checkout experience.'}
+              buttonText={t('addAddress')}
               onButtonPress={() => setIsModalOpen(true)}
             />
           }
@@ -203,8 +210,8 @@ export const AddressesScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>Add Delivery Address</Text>
-                <Text style={styles.modalSub}>Ship pure herbal remedies safely to your door</Text>
+                <Text style={styles.modalTitle}>{t('addAddress')}</Text>
+                <Text style={styles.modalSub}>{isTamil ? 'தூய மூலிகைகளை உங்கள் வீட்டு வாசலில் பெறுங்கள்' : 'Ship pure herbal remedies safely to your door'}</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsModalOpen(false)}
@@ -215,67 +222,84 @@ export const AddressesScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Full Name *"
-              placeholderTextColor="#8A9E92"
-              value={fullName}
-              onChangeText={setFullName}
-            />
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="10-digit Phone Number *"
-              placeholderTextColor="#8A9E92"
-              keyboardType="phone-pad"
-              maxLength={10}
-              value={phone}
-              onChangeText={setPhone}
-            />
-
-            <TextInput
-              style={[styles.modalInput, styles.textArea]}
-              placeholder="Door No, Building, Street Name, Area *"
-              placeholderTextColor="#8A9E92"
-              multiline
-              value={street}
-              onChangeText={setStreet}
-            />
-
-            <View style={styles.formRow}>
-              <TextInput
-                style={[styles.modalInput, { flex: 1, marginRight: 8 }]}
-                placeholder="City / Town *"
-                placeholderTextColor="#8A9E92"
-                value={city}
-                onChangeText={setCity}
-              />
-              <TextInput
-                style={[styles.modalInput, { flex: 1 }]}
-                placeholder="6-digit Pincode *"
-                placeholderTextColor="#8A9E92"
-                keyboardType="numeric"
-                maxLength={6}
-                value={pincode}
-                onChangeText={setPincode}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.saveBtn, isSaving ? styles.btnDisabled : null]}
-              onPress={handleSaveAddress}
-              disabled={isSaving}
-              activeOpacity={0.88}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 16 }}
             >
-              {isSaving ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.saveBtnText}>Save Address ›</Text>
-              )}
-            </TouchableOpacity>
+              <TextInput
+                style={styles.modalInput}
+                placeholder={isTamil ? 'முழு பெயர் *' : 'Full Name *'}
+                placeholderTextColor="#8A9E92"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder={isTamil ? '10 இலக்க மொபைல் எண் *' : '10-digit Phone Number *'}
+                placeholderTextColor="#8A9E92"
+                keyboardType="phone-pad"
+                maxLength={10}
+                value={phone}
+                onChangeText={setPhone}
+              />
+
+              <TextInput
+                style={[styles.modalInput, styles.textArea]}
+                placeholder={isTamil ? 'கதவு எண், கட்டிடம், தெரு முகவரி, பகுதி *' : 'Door No, Building, Street Name, Area *'}
+                placeholderTextColor="#8A9E92"
+                multiline
+                value={street}
+                onChangeText={setStreet}
+              />
+
+              <View style={styles.formRow}>
+                <TextInput
+                  style={[styles.modalInput, { flex: 1, marginRight: 8 }]}
+                  placeholder={isTamil ? 'நகரம் / ஊர் *' : 'City / Town *'}
+                  placeholderTextColor="#8A9E92"
+                  value={city}
+                  onChangeText={setCity}
+                />
+                <TextInput
+                  style={[styles.modalInput, { flex: 1 }]}
+                  placeholder={isTamil ? '6 இலக்க அஞ்சல் குறியீடு *' : '6-digit Pincode *'}
+                  placeholderTextColor="#8A9E92"
+                  keyboardType="numeric"
+                  maxLength={6}
+                  value={pincode}
+                  onChangeText={setPincode}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, isSaving ? styles.btnDisabled : null]}
+                onPress={handleSaveAddress}
+                disabled={isSaving}
+                activeOpacity={0.88}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>{t('saveAddress')} ›</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Success Celebration Modal Matching User Mockup */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title={isTamil ? 'முகவரி சேமிக்கப்பட்டது!' : 'Address Saved!'}
+        subtitle={isTamil ? 'தாரணி ஹெர்பல்ஸ்' : 'Dharani Herbals'}
+        message={isTamil ? 'உங்கள் புதிய டெலிவரி முகவரி வெற்றிகரமாக சேர்க்கப்பட்டது.' : 'Your delivery address has been saved successfully.'}
+        buttonText={isTamil ? 'சரி →' : 'Done →'}
+        onPress={() => setShowSuccessModal(false)}
+        onClose={() => setShowSuccessModal(false)}
+      />
     </View>
   );
 };
