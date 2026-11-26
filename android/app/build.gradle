@@ -82,7 +82,7 @@ android {
         applicationId "in.dharaniherbbals.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
+        versionCode 13
         versionName "1.1.0"
     }
     signingConfigs {
