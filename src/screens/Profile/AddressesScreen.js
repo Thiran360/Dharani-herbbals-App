@@ -26,6 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import storage from '../../services/storage';
 import api from '../../services/api';
+import locationService from '../../services/locationService';
 
 export const AddressesScreen = () => {
   const { user } = useAuth();
@@ -43,6 +44,30 @@ export const AddressesScreen = () => {
   const [pincode, setPincode] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleDetectLiveLocation = async () => {
+    setIsLocating(true);
+    try {
+      const loc = await locationService.getLiveLocation(isTamil);
+      if (loc) {
+        if (loc.streetAddress) setStreet(loc.streetAddress);
+        else if (loc.fullAddress && !street) setStreet(loc.fullAddress);
+        if (loc.city) setCity(loc.city);
+        if (loc.state) setState(loc.state);
+        if (loc.pincode) setPincode(loc.pincode);
+      }
+    } catch (err) {
+      Alert.alert(
+        isTamil ? 'இருப்பிட தகவல்' : 'Location Information',
+        err.message || (isTamil
+          ? 'இருப்பிடத்தை கண்டறிய முடியவில்லை. தயவுசெய்து ஊர் மற்றும் அஞ்சல் குறியீட்டை உள்ளிடவும்.'
+          : 'Could not auto-detect location. Please enter manually.')
+      );
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -227,6 +252,21 @@ export const AddressesScreen = () => {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 16 }}
             >
+              <TouchableOpacity
+                style={styles.gpsAutoBtn}
+                onPress={handleDetectLiveLocation}
+                disabled={isLocating}
+                activeOpacity={0.85}
+              >
+                {isLocating ? (
+                  <ActivityIndicator size="small" color="#1B4D3E" style={{ marginRight: 6 }} />
+                ) : (
+                  <Icon name="map-pin" size={15} color="#1B4D3E" style={{ marginRight: 6 }} />
+                )}
+                <Text style={styles.gpsAutoBtnText}>
+                  {isTamil ? '🎯 தற்போதைய இருப்பிடத்தை தானாக நிரப்பவும்' : '🎯 Auto-Detect Live Location (GPS)'}
+                </Text>
+              </TouchableOpacity>
               <TextInput
                 style={styles.modalInput}
                 placeholder={isTamil ? 'முழு பெயர் *' : 'Full Name *'}
@@ -305,6 +345,23 @@ export const AddressesScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  gpsAutoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  gpsAutoBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0D382B',
+  },
   container: {
     flex: 1,
     backgroundColor: '#FAF8F5',

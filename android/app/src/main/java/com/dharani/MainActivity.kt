@@ -11,7 +11,8 @@ class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     // Switch from SplashTheme back to AppTheme before super.onCreate
     setTheme(R.style.AppTheme)
-    super.onCreate(savedInstanceState)
+    // Pass null to avoid view restoration crashes/blank screens in react-native-screens
+    super.onCreate(null)
   }
 
   /**

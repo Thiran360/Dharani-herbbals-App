@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -179,14 +179,23 @@ const createTabRedirect = (tabName) => {
     React.useEffect(() => {
       navigation.replace('MainTabs', { screen: tabName });
     }, [navigation]);
-    return null;
+    return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
   };
   return TabRedirect;
 };
 
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#FFFFFF',
+    card: '#FFFFFF',
+  },
+};
+
 export const AppNavigator = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         initialRouteName="SplashScreen"
         screenOptions={{

@@ -27,6 +27,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
+import locationService from '../../services/locationService';
 
 const DEFAULT_INDIAN_STATES = [
   'Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana',
@@ -297,31 +298,41 @@ export const CheckoutScreen = ({ navigation }) => {
   const handleDetectLiveLocation = async () => {
     setIsLocating(true);
     try {
-      const response = await fetch('https://ipapi.co/json/');
-      const data = await response.json();
-      if (data && (data.city || data.region)) {
-        if (data.city) setCity(data.city);
-        if (data.region) {
-          setState(data.region);
-          setSelectedState(data.region);
+      const loc = await locationService.getLiveLocation(isTamil);
+      if (loc) {
+        if (loc.streetAddress) {
+          setStreetAddress(loc.streetAddress);
+        } else if (loc.fullAddress && !streetAddress) {
+          setStreetAddress(loc.fullAddress);
         }
-        if (data.postal) setPincode(data.postal);
+
+        if (loc.city) setCity(loc.city);
+        if (loc.state) {
+          setState(loc.state);
+          setSelectedState(loc.state);
+        }
+        if (loc.pincode) {
+          setPincode(loc.pincode);
+          if (typeof handlePincodeChange === 'function') {
+            handlePincodeChange(loc.pincode);
+          }
+        }
         setIsAddressSaved(false);
+
+        const summary = [loc.city, loc.state, loc.pincode].filter(Boolean).join(', ');
         Alert.alert(
           isTamil ? 'இருப்பிடம் கண்டறியப்பட்டது' : 'Location Detected',
           isTamil
-            ? `${data.city || ''}, ${data.region || ''} - ${data.postal || ''} கண்டறியப்பட்டது.`
-            : `Detected: ${data.city || ''}, ${data.region || ''} - ${data.postal || ''}.`
+            ? `${summary} கண்டறியப்பட்டது. உங்கள் முகவரி விவரங்கள் தானாக நிரப்பப்பட்டன.`
+            : `Detected: ${summary}. Your delivery address has been auto-populated.`
         );
-      } else {
-        throw new Error('Location detection failed');
       }
     } catch (err) {
       Alert.alert(
         isTamil ? 'இருப்பிட தகவல்' : 'Location Information',
-        isTamil
+        err.message || (isTamil
           ? 'இருப்பிடத்தை கண்டறிய முடியவில்லை. தயவுசெய்து ஊர் மற்றும் அஞ்சல் குறியீட்டை உள்ளிடவும்.'
-          : 'Could not auto-detect location. Please enter manually.'
+          : 'Could not auto-detect location. Please enter manually.')
       );
     } finally {
       setIsLocating(false);
