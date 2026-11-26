@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -38,6 +38,34 @@ import PoliciesScreen from '../screens/Policies/PoliciesScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const AnimatedTabIcon = ({ name, size, color, focused, badge = null }) => {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: focused ? 1.15 : 1,
+      friction: 5,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  }, [focused]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.tabIconWrapper,
+        focused && styles.tabIconWrapperFocused,
+        { transform: [{ scale: scaleAnim }] },
+      ]}
+    >
+      <View style={{ position: 'relative' }}>
+        <Icon name={name} size={size} color={color} focused={focused} />
+        {badge}
+      </View>
+    </Animated.View>
+  );
+};
+
 const BottomTabNavigator = () => {
   const insets = useSafeAreaInsets();
   const { totalItemCount } = useCart();
@@ -50,25 +78,26 @@ const BottomTabNavigator = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: '#7D8E83',
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.62)',
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: '#0D382B',
           borderTopWidth: 1,
-          borderTopColor: 'rgba(27, 77, 62, 0.08)',
-          height: 60 + bottomInset,
+          borderTopColor: 'rgba(255, 255, 255, 0.12)',
+          height: 58 + bottomInset,
           paddingBottom: bottomInset,
-          paddingTop: 6,
+          paddingTop: 5,
+          elevation: 12,
           ...SHADOWS.medium,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 10.5,
           fontWeight: '700',
           letterSpacing: 0.1,
-          marginTop: 1,
+          marginTop: 2,
         },
         tabBarItemStyle: {
-          paddingVertical: 2,
+          paddingVertical: 1,
         },
       }}
     >
@@ -78,9 +107,7 @@ const BottomTabNavigator = () => {
         options={{
           tabBarLabel: isTamil ? 'முகப்பு' : 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperFocused]}>
-              <Icon name="home" size={22} color={color} focused={focused} />
-            </View>
+            <AnimatedTabIcon name="home" size={22} color={color} focused={focused} />
           ),
         }}
       />
@@ -91,9 +118,7 @@ const BottomTabNavigator = () => {
         options={{
           tabBarLabel: isTamil ? 'பிரிவுகள்' : 'Categories',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperFocused]}>
-              <Icon name="categories" size={21} color={color} focused={focused} />
-            </View>
+            <AnimatedTabIcon name="categories" size={21} color={color} focused={focused} />
           ),
         }}
       />
@@ -104,9 +129,7 @@ const BottomTabNavigator = () => {
         options={{
           tabBarLabel: isTamil ? 'தேடல்' : 'Search',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperFocused]}>
-              <Icon name="search" size={21} color={color} focused={focused} />
-            </View>
+            <AnimatedTabIcon name="search" size={21} color={color} focused={focused} />
           ),
         }}
       />
@@ -117,18 +140,21 @@ const BottomTabNavigator = () => {
         options={{
           tabBarLabel: isTamil ? 'கூடை' : 'Cart',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperFocused]}>
-              <View style={{ position: 'relative' }}>
-                <Icon name="cart" size={22} color={color} focused={focused} />
-                {totalItemCount > 0 ? (
+            <AnimatedTabIcon
+              name="cart"
+              size={22}
+              color={color}
+              focused={focused}
+              badge={
+                totalItemCount > 0 ? (
                   <View style={styles.cartBadge}>
                     <Text style={styles.cartBadgeText}>
                       {totalItemCount > 9 ? '9+' : totalItemCount}
                     </Text>
                   </View>
-                ) : null}
-              </View>
-            </View>
+                ) : null
+              }
+            />
           ),
         }}
       />
@@ -139,9 +165,7 @@ const BottomTabNavigator = () => {
         options={{
           tabBarLabel: isTamil ? 'கணக்கு' : 'Account',
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.tabIconWrapper, focused && styles.tabIconWrapperFocused]}>
-              <Icon name="account" size={22} color={color} focused={focused} />
-            </View>
+            <AnimatedTabIcon name="account" size={22} color={color} focused={focused} />
           ),
         }}
       />
@@ -199,20 +223,20 @@ export const AppNavigator = () => {
 
 const styles = StyleSheet.create({
   tabIconWrapper: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.full,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabIconWrapperFocused: {
-    backgroundColor: '#EBF2ED',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
   cartBadge: {
     position: 'absolute',
     top: -5,
-    right: -9,
-    backgroundColor: '#D9534F',
+    right: -10,
+    backgroundColor: '#E53E3E',
     minWidth: 17,
     height: 17,
     borderRadius: 8.5,
@@ -220,7 +244,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: '#0D382B',
   },
   cartBadgeText: {
     color: '#FFFFFF',

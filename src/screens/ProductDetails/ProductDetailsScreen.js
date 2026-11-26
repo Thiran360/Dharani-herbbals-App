@@ -167,17 +167,6 @@ export const ProductDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleAddToCart = () => {
-    if (!isAuthenticated || !user?.id || isGuest) {
-      navigation.navigate('LoginScreen', {
-        pendingAction: {
-          type: 'ADD_TO_CART',
-          product,
-          quantity,
-          variation: selectedVariation,
-        },
-      });
-      return;
-    }
     addToCart(product, quantity, selectedVariation);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2400);

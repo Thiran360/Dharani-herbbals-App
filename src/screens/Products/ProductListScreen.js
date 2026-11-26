@@ -26,6 +26,7 @@ import { getLocalizedCategoryName } from '../../utils/localization';
 import { filterProductsByQuery } from '../../utils/productSearch';
 import { prefetchImages } from '../../utils/imageOptimizer';
 import api from '../../services/api';
+import storage from '../../services/storage';
 
 export const ProductListScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
@@ -47,6 +48,15 @@ export const ProductListScreen = ({ route, navigation }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
+    // 1. Instant 0ms cached products display
+    storage.getCachedProducts().then(cached => {
+      if (Array.isArray(cached) && cached.length > 0) {
+        setProducts(cached);
+        setIsLoading(false);
+      }
+    });
+
+    // 2. Refresh from backend in background
     fetchProducts();
   }, []);
 

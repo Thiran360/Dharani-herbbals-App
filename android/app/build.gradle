@@ -82,8 +82,8 @@ android {
         applicationId "in.dharaniherbbals.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
-        versionName "1.0.7"
+        versionCode 11
+        versionName "1.1.0"
     }
     signingConfigs {
         debug {
@@ -93,11 +93,16 @@ android {
             keyPassword 'android'
         }
         release {
-            if (project.hasProperty('DHARANI_RELEASE_STORE_FILE')) {
+            if (project.hasProperty('DHARANI_RELEASE_STORE_FILE') && file(DHARANI_RELEASE_STORE_FILE).exists()) {
                 storeFile file(DHARANI_RELEASE_STORE_FILE)
                 storePassword DHARANI_RELEASE_STORE_PASSWORD
                 keyAlias DHARANI_RELEASE_KEY_ALIAS
                 keyPassword DHARANI_RELEASE_KEY_PASSWORD
+            } else {
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
             }
         }
     }

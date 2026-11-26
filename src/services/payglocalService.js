@@ -29,7 +29,6 @@ async function postToPaymentApi(endpoint, body = {}) {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
         ...(API_CONFIG.HEADERS || {}),
       },
       body: JSON.stringify(body),

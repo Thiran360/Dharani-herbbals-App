@@ -86,14 +86,13 @@ export const Header = ({
                 <AnimatedLogo size={isNarrow ? 32 : 38} />
               </View>
               <View style={[styles.brandTitleContainer, isNarrow && { marginLeft: 6 }]}>
-                <Image
-                  source={require('../../assets/brand_logotype_horizontal.png')}
-                  style={[
-                    styles.brandLogotype,
-                    isNarrow && { width: Math.min(130, Math.round(width * 0.32)), height: 16 },
-                  ]}
-                  resizeMode="contain"
-                />
+                <Text
+                  style={[styles.brandTitleMain, isNarrow && styles.brandTitleMainNarrow]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {isTamil ? 'தாரணி ஹெர்பல்ஸ்' : 'Dharani Herbbals'}
+                </Text>
                 <Text style={[styles.brandSubtitle, isNarrow && { fontSize: 8.5 }]} numberOfLines={1}>
                   {isTamil ? '100% இயற்கை நலவாழ்வு' : '100% Natural Wellness'}
                 </Text>
@@ -200,50 +199,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     paddingRight: SPACING.xs,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F6F4',
-    borderWidth: 1,
-    borderColor: 'rgba(27, 77, 62, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.sm,
-  },
-  backButtonNarrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginRight: 6,
+    minWidth: 0,
   },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   logoWrapper: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
   brandTitleContainer: {
-    marginLeft: SPACING.sm,
+    marginLeft: SPACING.xs,
     justifyContent: 'center',
     flex: 1,
+    minWidth: 0,
   },
-  brandLogotype: {
-    height: 18,
-    width: 155,
-    tintColor: '#133E2B',
+  brandTitleMain: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#133E2B',
+    letterSpacing: 0.1,
+  },
+  brandTitleMainNarrow: {
+    fontSize: 13,
   },
   brandSubtitle: {
-    fontSize: 9.5,
+    fontSize: 9,
     color: '#5B8266',
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 1,
     letterSpacing: 0.1,
   },
   titleText: {
@@ -257,13 +246,14 @@ const styles = StyleSheet.create({
   rightRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    flexShrink: 0,
   },
   langPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
+    gap: 3,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: RADIUS.full,
     backgroundColor: '#EAF1EB',
@@ -271,20 +261,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(27, 77, 62, 0.25)',
   },
   langPillNarrow: {
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     paddingVertical: 4,
     gap: 2,
   },
   langText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
     color: '#133E2B',
     letterSpacing: 0.2,
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F8FAF8',
@@ -293,9 +283,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   iconButtonNarrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
   cartButton: {
     backgroundColor: '#EBF2ED',

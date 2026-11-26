@@ -117,6 +117,17 @@ const CategoryCardComponent = ({ category, variant = 'circle' }) => {
   }
 
   // Circular variant for Home screen horizontal scroll
+  const ringIndex = typeof category.id === 'number' ? Math.abs(category.id) % 6 : 0;
+  const ringColors = [
+    { border: '#1B4D3E', bg: '#F0F7F4' }, // Emerald Botanical
+    { border: '#D4A373', bg: '#FAF5EE' }, // Botanical Gold
+    { border: '#2A9D8F', bg: '#EEF8F6' }, // Sage Green
+    { border: '#E76F51', bg: '#FDF2E9' }, // Terracotta
+    { border: '#8A5A44', bg: '#F7F3EE' }, // Warm Herbal
+    { border: '#588157', bg: '#F2F6F1' }, // Forest Herb
+  ];
+  const currentRing = ringColors[ringIndex] || ringColors[0];
+
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
@@ -126,8 +137,8 @@ const CategoryCardComponent = ({ category, variant = 'circle' }) => {
         onPressOut={onPressOut}
         activeOpacity={0.88}
       >
-        {/* Dual-ring Botanical Ring */}
-        <View style={styles.outerRing}>
+        {/* Dual-ring Botanical Ring with Dynamic Herbal Accents */}
+        <View style={[styles.outerRing, { borderColor: currentRing.border, backgroundColor: currentRing.bg }]}>
           <View style={styles.circleImageWrapper}>
             <Image
               source={imageSource}

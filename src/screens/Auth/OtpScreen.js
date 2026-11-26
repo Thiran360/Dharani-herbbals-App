@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { Icon } from '../../components/common/Icons';
+import { AnimatedLogo } from '../../components/common/AnimatedLogo';
 import { SuccessModal } from '../../components/common/SuccessModal';
 import { SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
@@ -236,10 +237,13 @@ export const OtpScreen = ({ route, navigation }) => {
         >
           <View style={styles.iconCircleOuter}>
             <View style={styles.iconCircle}>
-              <Icon name="shield" size={28} color="#1B4D3E" />
+              <AnimatedLogo size={56} fps={24} />
             </View>
           </View>
 
+          <Text style={styles.welcomeBrandTitle}>
+            {isTamil ? 'தர்ணி ஹெர்பல்ஸுக்கு நல்வரவு' : 'Welcome to Dharani Herbbals'}
+          </Text>
           <Text style={styles.title}>{t('enterOtp')}</Text>
           <Text style={styles.subtitle}>
             {t('otpSentTo')} <Text style={styles.boldText}>+91 {mobile}</Text>
@@ -292,7 +296,12 @@ export const OtpScreen = ({ route, navigation }) => {
               activeOpacity={0.88}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <View style={styles.btnLoadingRow}>
+                  <AnimatedLogo size={22} fps={24} style={{ marginRight: 10 }} />
+                  <Text style={styles.verifyBtnText}>
+                    {isTamil ? 'சரிபார்க்கப்படுகிறது...' : 'Verifying...'}
+                  </Text>
+                </View>
               ) : (
                 <Text style={styles.verifyBtnText}>{t('verifyAndProceed')}</Text>
               )}
@@ -365,6 +374,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.small,
+  },
+  welcomeBrandTitle: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: '#1B4D3E',
+    letterSpacing: -0.2,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  btnLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 20,

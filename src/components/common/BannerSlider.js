@@ -84,15 +84,15 @@ export const BannerSlider = () => {
                 style={[
                   styles.tagBadge,
                   {
-                    backgroundColor: 'rgba(255, 255, 255, 0.90)',
-                    borderColor: item.accentColor || '#14532D',
+                    backgroundColor: item.tagBg || 'rgba(255, 255, 255, 0.15)',
+                    borderColor: item.accentColor || '#4ADE80',
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.tagText,
-                    { color: item.accentColor || '#14532D' },
+                    { color: item.accentColor || '#4ADE80' },
                   ]}
                 >
                   {item.tag}
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'rgba(27, 77, 62, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   textContent: {
     flex: 1.15,
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   title: {
-    color: '#0D3522',
+    color: '#FFFFFF',
     fontSize: 17.5,
     fontWeight: '800',
     lineHeight: 22,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   subtitle: {
-    color: '#264E38',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: 11.5,
     lineHeight: 16,
     marginBottom: 10,
@@ -231,25 +231,25 @@ const styles = StyleSheet.create({
   },
   shopNowBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1B4D3E',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: RADIUS.full,
     ...Platform.select({
       ios: {
-        shadowColor: '#1B4D3E',
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.18,
-        shadowRadius: 3,
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 2,
-        shadowColor: '#1B4D3E',
+        elevation: 3,
+        shadowColor: '#000000',
       },
     }),
   },
   shopNowText: {
-    color: '#FFFFFF',
+    color: '#0F382C',
     fontSize: 11.5,
     fontWeight: '800',
     letterSpacing: 0.2,
@@ -262,21 +262,21 @@ const styles = StyleSheet.create({
   },
   sliderCircleFrame: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#82BA9A',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#1B4D3E',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.14,
-        shadowRadius: 5,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 3,
-        shadowColor: '#1B4D3E',
+        elevation: 5,
+        shadowColor: '#000000',
       },
     }),
   },
@@ -292,11 +292,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#A3CBB3',
+    backgroundColor: '#C2D9CD',
   },
   activeDot: {
     width: 22,
-    backgroundColor: '#1B4D3E',
+    backgroundColor: '#0F382C',
     borderRadius: 3,
   },
 });

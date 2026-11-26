@@ -87,3 +87,13 @@ backend/.env
 backend/*.pem
 backend/*.key
 
+# Build and local test artifacts
+*.apk
+*.aab
+*.png
+!src/**/*.png
+!android/**/*.png
+scratch/
+assets/
+
+

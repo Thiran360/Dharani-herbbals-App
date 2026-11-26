@@ -33,7 +33,9 @@ import { BUSINESS_INFO, COMPANY_STATS, CORE_VALUES } from '../../constants/confi
 import { STATIC_CATEGORIES } from '../../constants/categories';
 import { useLanguage } from '../../context/LanguageContext';
 import { prefetchImages } from '../../utils/imageOptimizer';
+import { ChatbotModal, FloatingChatbotButton } from '../../components/common/ChatbotModal';
 import api from '../../services/api';
+import storage from '../../services/storage';
 
 export const HomeScreen = () => {
   const navigation = useNavigation();
@@ -50,6 +52,7 @@ export const HomeScreen = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
 
   // Smooth content entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -135,6 +138,16 @@ export const HomeScreen = () => {
   }, []);
 
   useEffect(() => {
+    // 1. Instant 0ms display from local cache
+    storage.getCachedProducts().then(cached => {
+      if (Array.isArray(cached) && cached.length > 0) {
+        setFeaturedProducts(cached.slice(0, 10));
+        setMostLoved(cached.slice(0, 8));
+        setIsLoading(false);
+      }
+    });
+
+    // 2. Fetch fresh products silently in background
     loadHomeData();
   }, [loadHomeData]);
 
@@ -493,6 +506,12 @@ export const HomeScreen = () => {
           </View>
         </Animated.View>
       </ScrollView>
+
+      {/* Floating Dharani AI Chatbot Button */}
+      <FloatingChatbotButton onPress={() => setIsChatbotOpen(true)} />
+
+      {/* Dharani Botanical AI Chatbot Modal */}
+      <ChatbotModal visible={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
     </View>
   );
 };

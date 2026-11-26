@@ -2,7 +2,7 @@
  * Shopping Cart Screen for Dharani Herbbals
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,38 @@ import { useAuth } from '../../context/AuthContext';
 import { formatProductSize } from '../../utils/formatters';
 import { getLocalizedProductName } from '../../utils/localization';
 import { getOptimizedImageSource } from '../../utils/imageOptimizer';
+import storage from '../../services/storage';
+
+const CartItemThumbnail = ({ item, cachedProducts }) => {
+  const [imageError, setImageError] = useState(false);
+
+  // Look up matched product from cached products if item.image is missing or relative
+  const matchedProd = cachedProducts?.find?.(p => String(p.id) === String(item.id || item.product_id));
+  const rawImage =
+    item.image ||
+    item.product_image ||
+    item.image_url ||
+    item.thumbnail ||
+    matchedProd?.image ||
+    matchedProd?.product_image ||
+    matchedProd?.thumbnail ||
+    '';
+
+  const source = (!imageError && rawImage)
+    ? getOptimizedImageSource(rawImage)
+    : require('../../assets/logo.png');
+
+  return (
+    <View style={styles.itemImageContainer}>
+      <Image
+        source={source}
+        style={styles.itemImage}
+        resizeMode="contain"
+        onError={() => setImageError(true)}
+      />
+    </View>
+  );
+};
 
 const STATE_OPTIONS = [
   'Tamil Nadu',
@@ -49,9 +81,29 @@ export const CartScreen = ({ navigation }) => {
     removeFromCart,
     clearCart,
   } = useCart();
-  const { user, isAuthenticated, isGuest } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isGuest,
+    isDistributorOrReseller,
+    creditsEnabled,
+    availableCredit,
+    refreshUserProfile,
+  } = useAuth();
   const { isTamil, t, language } = useLanguage();
   const insets = useSafeAreaInsets();
+  const [cachedProducts, setCachedProducts] = useState([]);
+
+  useEffect(() => {
+    storage.getCachedProducts().then(prods => {
+      if (Array.isArray(prods) && prods.length > 0) {
+        setCachedProducts(prods);
+      }
+    });
+    if (isAuthenticated && !isGuest && user?.id) {
+      refreshUserProfile?.(user.id);
+    }
+  }, []);
 
   const handleClearCart = () => {
     Alert.alert(
@@ -72,21 +124,38 @@ export const CartScreen = ({ navigation }) => {
       });
       return;
     }
+
+    // Role-Based Validation for Distributor & Reseller
+    if (isDistributorOrReseller) {
+      if (!creditsEnabled) {
+        Alert.alert(
+          isTamil ? 'கிரெடிட் வசதி முடக்கப்பட்டுள்ளது' : 'Credit Facility Disabled',
+          isTamil
+            ? 'உங்கள் கணக்கில் கிரெடிட் கட்டண வசதி செயல்படுத்தப்படவில்லை. ஆர்டர் செய்ய தர்ணி ஹெர்பல்ஸ் நிர்வாகியைத் தொடர்பு கொள்ளவும்.'
+            : 'Credit payment is disabled for your distributor/reseller account. Please contact admin.'
+        );
+        return;
+      }
+
+      if (subtotal > availableCredit) {
+        Alert.alert(
+          isTamil ? 'கிரெடிட் வரம்பு தாண்டியது' : 'Credit Limit Exceeded',
+          isTamil
+            ? `கார்ட் தொகை (₹${subtotal.toFixed(0)}) உங்கள் அனுமதிக்கப்பட்ட கிரெடிட் வரம்பை (₹${availableCredit.toFixed(0)}) விட அதிகமாக உள்ளது!\n\nதயவுசெய்து கார்ட்டில் எண்ணிக்கையைக் குறைக்கவும் அல்லது நிர்வாகியிடம் கிரெடிட் வரம்பை அதிகரிக்கவும்.`
+            : `Your cart total (₹${subtotal.toFixed(0)}) exceeds your available credit limit (₹${availableCredit.toFixed(0)}).\n\nPlease reduce cart quantity or contact admin.`
+        );
+        return;
+      }
+    }
+
     navigation.navigate('CheckoutScreen');
   };
 
   const renderCartItem = ({ item }) => {
     return (
       <View style={styles.cartItemCard}>
-        {/* Product Image in warm studio frame */}
-        <View style={styles.itemImageContainer}>
-          <Image
-            source={getOptimizedImageSource(item.image)}
-            style={styles.itemImage}
-            resizeMode="contain"
-            defaultSource={require('../../assets/logo.png')}
-          />
-        </View>
+        {/* Product Image with robust thumbnail fallback */}
+        <CartItemThumbnail item={item} cachedProducts={cachedProducts} />
 
         {/* Item Info */}
         <View style={styles.itemDetails}>
@@ -201,62 +270,66 @@ export const CartScreen = ({ navigation }) => {
         windowSize={5}
         removeClippedSubviews={true}
         ListHeaderComponent={
-          <View>
-            {/* Luxury Free Shipping Progress Indicator */}
-            <View style={styles.freeShippingCard}>
-              {deliveryInfo.isFree ? (
-                <View style={styles.freeShipHeader}>
-                  <View style={styles.freeShipIconBadge}>
-                    <Icon name="check" size={14} color="#1B4D3E" />
-                  </View>
-                  <View style={styles.freeShipTextContainer}>
-                    <Text style={styles.freeShipSuccessText}>
-                      {isTamil ? 'இலவச டெலிவரி கிடைத்துள்ளது!' : 'Complimentary Delivery Unlocked!'}
+          <View style={styles.headerContainer}>
+            {isDistributorOrReseller ? (
+              <View style={styles.creditCard}>
+                <View style={styles.creditHeaderRow}>
+                  <View style={styles.creditBadge}>
+                    <Text style={styles.creditBadgeText}>
+                      {user?.userType === 'reseller' || user?.role === 'reseller'
+                        ? (isTamil ? 'ரீசெல்லர் கணக்கு' : 'Reseller Account')
+                        : (isTamil ? 'டிஸ்ட்ரிபியூட்டர் கணக்கு' : 'Distributor Account')}
                     </Text>
-                    <Text style={styles.freeShipSubText}>
-                      {isTamil
-                        ? `${selectedState} மாநிலத்திற்கு இலவச டெலிவரிக்கு தகுதி பெற்றுள்ளது.`
-                        : `Your order qualifies for free delivery to ${selectedState}.`}
+                  </View>
+                  <View style={[styles.statusPill, creditsEnabled ? styles.statusPillActive : styles.statusPillDisabled]}>
+                    <Text style={[styles.statusPillText, creditsEnabled ? styles.statusPillTextActive : styles.statusPillTextDisabled]}>
+                      {creditsEnabled
+                        ? (isTamil ? '✓ கிரெடிட் வசதி உள்ளது' : '✓ Credit Enabled')
+                        : (isTamil ? '✕ கிரெடிட் முடக்கம்' : '✕ Credit Disabled')}
                     </Text>
                   </View>
                 </View>
-              ) : (
-                <View>
-                  <View style={styles.progressHeaderRow}>
-                    <Text style={styles.freeShipNotice}>
-                      {isTamil ? (
-                        <>இலவச டெலிவரிக்கு மேலும் <Text style={styles.boldText}>₹{deliveryInfo.remaining.toFixed(0)}</Text> சேர்க்கவும்</>
-                      ) : (
-                        <>Add <Text style={styles.boldText}>₹{deliveryInfo.remaining.toFixed(0)}</Text> more for <Text style={styles.greenText}>FREE Delivery</Text></>
-                      )}
-                    </Text>
-                    <Text style={styles.thresholdText}>{isTamil ? `இலக்கு: ₹${deliveryInfo.threshold}` : `Goal: ₹${deliveryInfo.threshold}`}</Text>
-                  </View>
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
-                  </View>
-                </View>
-              )}
-            </View>
 
-            {/* Destination State Selector */}
-            <View style={styles.stateSelectorCard}>
-              <Text style={styles.stateLabel}>{isTamil ? 'டெலிவரி சேருமிடம் மாநிலம்' : 'Delivery Destination State'}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statesScroll}>
-                {STATE_OPTIONS.map(st => (
-                  <TouchableOpacity
-                    key={`st-${st}`}
-                    style={[styles.statePill, selectedState === st ? styles.statePillActive : null]}
-                    onPress={() => setSelectedState(st)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[styles.statePillText, selectedState === st ? styles.statePillTextActive : null]}>
-                      {st}
+                <View style={styles.creditDetailsGrid}>
+                  <View style={styles.creditItem}>
+                    <Text style={styles.creditLabel}>{isTamil ? 'அனுமதிக்கப்பட்ட வரம்பு' : 'Credit Limit'}</Text>
+                    <Text style={styles.creditValue}>₹{(user?.creditLimit || 0).toFixed(0)}</Text>
+                  </View>
+                  <View style={styles.creditDivider} />
+                  <View style={styles.creditItem}>
+                    <Text style={styles.creditLabel}>{isTamil ? 'கிடைக்கக்கூடிய இருப்பு' : 'Available Credit'}</Text>
+                    <Text style={[styles.creditValue, { color: availableCredit >= subtotal ? '#1B4D3E' : '#DC2626' }]}>
+                      ₹{availableCredit.toFixed(0)}
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+                  </View>
+                  <View style={styles.creditDivider} />
+                  <View style={styles.creditItem}>
+                    <Text style={styles.creditLabel}>{isTamil ? 'பயன்படுத்திய தொகை' : 'Used Balance'}</Text>
+                    <Text style={styles.creditValue}>₹{(user?.balance || 0).toFixed(0)}</Text>
+                  </View>
+                </View>
+
+                {!creditsEnabled ? (
+                  <View style={styles.creditWarningBox}>
+                    <Icon name="alert-circle" size={14} color="#DC2626" />
+                    <Text style={styles.creditWarningText}>
+                      {isTamil
+                        ? 'உங்கள் கணக்கில் கிரெடிட் கட்டணம் முடக்கப்பட்டுள்ளது. நிர்வாகியைத் தொடர்பு கொள்ளவும்.'
+                        : 'Credit facility is disabled. Please contact admin to activate.'}
+                    </Text>
+                  </View>
+                ) : subtotal > availableCredit ? (
+                  <View style={styles.creditWarningBox}>
+                    <Icon name="alert-circle" size={14} color="#DC2626" />
+                    <Text style={styles.creditWarningText}>
+                      {isTamil
+                        ? `கார்ட் தொகை (₹${subtotal.toFixed(0)}) உங்கள் கிரெடிட் வரம்பை (₹${availableCredit.toFixed(0)}) விட அதிகம். ஆர்டரை தொடர எண்ணிக்கையைக் குறைக்கவும்.`
+                        : `Cart total (₹${subtotal.toFixed(0)}) exceeds your available credit (₹${availableCredit.toFixed(0)}).`}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
             <View style={styles.itemsHeader}>
               <Text style={styles.itemsLabel}>
@@ -273,15 +346,8 @@ export const CartScreen = ({ navigation }) => {
             <Text style={styles.summaryHeading}>{t('priceDetails')}</Text>
 
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{t('subtotal')}</Text>
+              <Text style={styles.summaryLabel}>{isTamil ? 'பொருட்களின் மொத்த விலை' : 'Items Subtotal'}</Text>
               <Text style={styles.summaryVal}>₹{subtotal.toFixed(0)}</Text>
-            </View>
-
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>{isTamil ? `டெலிவரி கட்டணம் (${selectedState})` : `Delivery Fee (${selectedState})`}</Text>
-              <Text style={[styles.summaryVal, deliveryCharge === 0 ? styles.freeDeliveryText : null]}>
-                {deliveryCharge === 0 ? (isTamil ? 'இலவசம்' : 'FREE') : `₹${deliveryCharge}`}
-              </Text>
             </View>
 
             <View style={styles.summaryRow}>
@@ -294,9 +360,11 @@ export const CartScreen = ({ navigation }) => {
             <View style={styles.totalRow}>
               <View>
                 <Text style={styles.totalLabel}>{t('total')}</Text>
-                <Text style={styles.totalSubtext}>{isTamil ? 'அனைத்து வரிகளும் அடங்கும்' : 'Inclusive of all taxes'}</Text>
+                <Text style={styles.totalSubtext}>
+                  {isTamil ? 'டெலிவரி கட்டணம் செக்-அவுட்டில் கணக்கிடப்படும்' : 'Shipping calculated at Checkout'}
+                </Text>
               </View>
-              <Text style={styles.totalVal}>₹{grandTotal.toFixed(0)}</Text>
+              <Text style={styles.totalVal}>₹{subtotal.toFixed(0)}</Text>
             </View>
 
             {/* Botanical Trust Note */}
@@ -312,7 +380,7 @@ export const CartScreen = ({ navigation }) => {
         }
       />
 
-      {/* Luxury Checkout Bottom Bar */}
+      {/* Clean White Checkout Bottom Bar with subtle outline */}
       <View
         style={[
           styles.checkoutBar,
@@ -323,7 +391,7 @@ export const CartScreen = ({ navigation }) => {
       >
         <View style={styles.totalContainer}>
           <Text style={styles.bottomTotalLabel}>{t('total')}</Text>
-          <Text style={styles.bottomTotalVal}>₹{grandTotal.toFixed(0)}</Text>
+          <Text style={styles.bottomTotalVal}>₹{subtotal.toFixed(0)}</Text>
         </View>
 
         <TouchableOpacity
@@ -478,26 +546,123 @@ const styles = StyleSheet.create({
   },
   cartItemCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm + 2,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
     flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(27, 77, 62, 0.08)',
     ...SHADOWS.small,
   },
   itemImageContainer: {
-    width: 76,
-    height: 76,
-    borderRadius: RADIUS.lg,
-    backgroundColor: '#FAF8F5',
-    padding: 6,
+    width: 82,
+    height: 82,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    padding: 4,
     borderWidth: 1,
-    borderColor: 'rgba(27, 77, 62, 0.06)',
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   itemImage: {
-    width: '100%',
-    height: '100%',
+    width: 74,
+    height: 74,
+  },
+  creditCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.small,
+  },
+  creditHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  creditBadge: {
+    backgroundColor: '#EBF2ED',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  creditBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1B4D3E',
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusPillActive: {
+    backgroundColor: 'rgba(27, 77, 62, 0.12)',
+  },
+  statusPillDisabled: {
+    backgroundColor: '#FEE2E2',
+  },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statusPillTextActive: {
+    color: '#1B4D3E',
+  },
+  statusPillTextDisabled: {
+    color: '#DC2626',
+  },
+  creditDetailsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+  },
+  creditItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  creditDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E2E8F0',
+  },
+  creditLabel: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginBottom: 3,
+    textAlign: 'center',
+  },
+  creditValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  creditWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 10,
+    gap: 6,
+  },
+  creditWarningText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: '#B91C1C',
+    fontWeight: '600',
+    lineHeight: 16,
   },
   itemDetails: {
     flex: 1,
@@ -669,14 +834,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(27, 77, 62, 0.08)',
-    ...SHADOWS.large,
+    borderTopWidth: 1.5,
+    borderTopColor: '#E2E8F0',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 8,
   },
   totalContainer: {
     marginRight: SPACING.sm,

@@ -412,6 +412,22 @@ export const api = {
     });
   },
 
+  // DYNAMIC SHIPPING CHARGES API
+  async getShippingCharges() {
+    try {
+      const res = await request('/shipping-charge/');
+      if (res && Array.isArray(res.data)) {
+        await storage.setCachedShippingRates(res.data);
+        return res.data;
+      }
+      return [];
+    } catch (error) {
+      console.log('api.getShippingCharges fallback to cache:', error.message);
+      const cached = await storage.getCachedShippingRates();
+      return Array.isArray(cached) ? cached : [];
+    }
+  },
+
   // CHECKOUT & ORDERS
   async createCheckout(orderPayload) {
     return await request('/checkout/', {

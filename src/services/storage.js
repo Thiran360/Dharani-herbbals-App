@@ -13,6 +13,7 @@ const KEYS = {
   RECENT_SEARCHES: '@dharani_recent_searches',
   LANGUAGE: '@dharani_language',
   PRODUCTS_CACHE: '@dharani_products_cache',
+  SHIPPING_RATES_CACHE: '@dharani_shipping_rates_cache',
 };
 
 export const storage = {
@@ -191,6 +192,24 @@ export const storage = {
       await AsyncStorage.setItem(KEYS.PRODUCTS_CACHE, JSON.stringify(products || []));
     } catch (e) {
       console.error('Storage error setCachedProducts:', e);
+    }
+  },
+
+  // Dynamic Shipping Rates
+  async getCachedShippingRates() {
+    try {
+      const data = await AsyncStorage.getItem(KEYS.SHIPPING_RATES_CACHE);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async setCachedShippingRates(rates) {
+    try {
+      await AsyncStorage.setItem(KEYS.SHIPPING_RATES_CACHE, JSON.stringify(rates || []));
+    } catch (e) {
+      console.error('Storage error setCachedShippingRates:', e);
     }
   },
 };

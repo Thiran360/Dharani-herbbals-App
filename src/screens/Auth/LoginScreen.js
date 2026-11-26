@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { Icon } from '../../components/common/Icons';
+import { AnimatedLogo } from '../../components/common/AnimatedLogo';
 import { SPACING, RADIUS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -81,13 +82,16 @@ export const LoginScreen = ({ navigation, route }) => {
       <Header title={t('login')} showBack={true} showCart={false} showLogo={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Brand Banner with Botanical Profile Halo */}
+        {/* Brand Banner with Botanical Profile Halo & Animated 3D Spinning Logo */}
         <View style={styles.brandHero}>
           <View style={styles.logoHalo}>
             <View style={styles.logoCircle}>
-              <Icon name="account" size={46} color="#1B4D3E" />
+              <AnimatedLogo size={56} fps={24} />
             </View>
           </View>
+          <Text style={styles.welcomeHeroText}>
+            {isTamil ? 'தர்ணி ஹெர்பல்ஸுக்கு நல்வரவு' : 'Welcome to Dharani Herbbals'}
+          </Text>
           <Image
             source={require('../../assets/brand_logotype_horizontal.png')}
             style={styles.brandLogotype}
@@ -127,7 +131,7 @@ export const LoginScreen = ({ navigation, route }) => {
             />
           </View>
 
-          {/* Send OTP Button */}
+          {/* Send OTP Button with Animated Spinning D-Logo */}
           <TouchableOpacity
             style={[styles.primaryBtn, isLoading ? styles.btnDisabled : null]}
             onPress={handleSendOtp}
@@ -135,7 +139,12 @@ export const LoginScreen = ({ navigation, route }) => {
             activeOpacity={0.88}
           >
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <View style={styles.btnLoadingRow}>
+                <AnimatedLogo size={22} fps={24} style={{ marginRight: 10 }} />
+                <Text style={styles.primaryBtnText}>
+                  {isTamil ? 'OTP அனுப்பப்படுகிறது...' : 'Sending OTP...'}
+                </Text>
+              </View>
             ) : (
               <Text style={styles.primaryBtnText}>{t('sendOtp')}</Text>
             )}
@@ -198,6 +207,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#E2EBE5',
     ...SHADOWS.small,
+  },
+  welcomeHeroText: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: '#1B4D3E',
+    letterSpacing: -0.2,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  btnLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
     width: 52,

@@ -70,14 +70,21 @@ export const SplashScreen = ({ navigation }) => {
         console.warn('Splash prefetch error:', e);
       } finally {
         const elapsed = Date.now() - startTime;
-        const remaining = Math.max(0, 2000 - elapsed);
+        const remaining = Math.max(0, 500 - elapsed);
         setTimeout(() => {
           navigation.replace('MainTabs');
         }, remaining);
       }
     };
 
-    prepareApp();
+    // Guarantee snappy transition within 650ms max
+    const timerFallback = setTimeout(() => {
+      navigation.replace('MainTabs');
+    }, 650);
+
+    prepareApp().finally(() => clearTimeout(timerFallback));
+
+    return () => clearTimeout(timerFallback);
   }, [logoOpacity, logoScale, footerOpacity, navigation]);
 
   return (

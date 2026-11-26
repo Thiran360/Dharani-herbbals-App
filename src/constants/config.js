@@ -4,9 +4,8 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: 'https://api.codingboss.in/herbal',
+  BASE_URL: 'http://179.197.251.47:30080/herbal',
   HEADERS: {
-    'ngrok-skip-browser-warning': 'true',
     'Accept': 'application/json',
     'Content-Type': 'application/json',
   },
