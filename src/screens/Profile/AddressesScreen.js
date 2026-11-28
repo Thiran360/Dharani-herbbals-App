@@ -13,9 +13,10 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
+  Dimensions,
 } from 'react-native';
 import { Header } from '../../components/common/Header';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -45,6 +46,31 @@ export const AddressesScreen = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      if (e?.endCoordinates?.height) {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const screenHeight = Dimensions.get('window').height;
+  const modalMaxHeight = keyboardHeight > 0
+    ? Math.max(260, screenHeight - keyboardHeight - (Platform.OS === 'android' ? 36 : 50))
+    : screenHeight * 0.88;
 
   const handleDetectLiveLocation = async () => {
     setIsLocating(true);
@@ -131,6 +157,7 @@ export const AddressesScreen = () => {
     setPhone('');
     setStreet('');
     setCity('');
+    setState('Tamil Nadu');
     setPincode('');
     setShowSuccessModal(true);
   };
@@ -180,7 +207,13 @@ export const AddressesScreen = () => {
         </View>
 
         <Text style={styles.addrText}>{item.address}</Text>
-        <Text style={styles.addrText}>{item.city}, {item.state} - {item.pincode}</Text>
+        <Text style={styles.addrText}>
+          {item.city}
+          {item.state && !item.city?.toLowerCase().includes(item.state?.toLowerCase())
+            ? `, ${item.state}`
+            : ''}{' '}
+          - {item.pincode}
+        </Text>
         <View style={styles.phoneBadge}>
           <Icon name="phone" size={11} color="#1B4D3E" />
           <Text style={styles.addrPhone}>{item.phone}</Text>
@@ -227,19 +260,43 @@ export const AddressesScreen = () => {
       )}
 
       {/* Add Address Modal */}
-      <Modal visible={isModalOpen} animationType="slide" transparent={true}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
+      <Modal
+        visible={isModalOpen}
+        animationType="slide"
+        transparent={true}
+        statusBarTranslucent={true}
+        onRequestClose={() => {
+          if (keyboardHeight > 0) {
+            Keyboard.dismiss();
+          } else {
+            setIsModalOpen(false);
+          }
+        }}
+      >
+        <View style={[styles.modalOverlay, { paddingBottom: keyboardHeight }]}>
+          <TouchableOpacity
+            style={styles.backdropDismiss}
+            activeOpacity={1}
+            onPress={() => {
+              if (keyboardHeight > 0) {
+                Keyboard.dismiss();
+              } else {
+                setIsModalOpen(false);
+              }
+            }}
+          />
+
+          <View style={[styles.modalContent, { maxHeight: modalMaxHeight }]}>
             <View style={styles.modalHeader}>
-              <View>
+              <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text style={styles.modalTitle}>{t('addAddress')}</Text>
                 <Text style={styles.modalSub}>{isTamil ? 'தூய மூலிகைகளை உங்கள் வீட்டு வாசலில் பெறுங்கள்' : 'Ship pure herbal remedies safely to your door'}</Text>
               </View>
               <TouchableOpacity
-                onPress={() => setIsModalOpen(false)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setIsModalOpen(false);
+                }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={styles.closeBtn}
               >
@@ -248,9 +305,10 @@ export const AddressesScreen = () => {
             </View>
 
             <ScrollView
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: 16 }}
+              nestedScrollEnabled={true}
+              contentContainerStyle={styles.scrollContent}
             >
               <TouchableOpacity
                 style={styles.gpsAutoBtn}
@@ -296,7 +354,7 @@ export const AddressesScreen = () => {
 
               <View style={styles.formRow}>
                 <TextInput
-                  style={[styles.modalInput, { flex: 1, marginRight: 8 }]}
+                  style={[styles.modalInput, { flex: 1.2, marginRight: 8 }]}
                   placeholder={isTamil ? 'நகரம் / ஊர் *' : 'City / Town *'}
                   placeholderTextColor="#8A9E92"
                   value={city}
@@ -304,14 +362,22 @@ export const AddressesScreen = () => {
                 />
                 <TextInput
                   style={[styles.modalInput, { flex: 1 }]}
-                  placeholder={isTamil ? '6 இலக்க அஞ்சல் குறியீடு *' : '6-digit Pincode *'}
+                  placeholder={isTamil ? 'மாநிலம் *' : 'State *'}
                   placeholderTextColor="#8A9E92"
-                  keyboardType="numeric"
-                  maxLength={6}
-                  value={pincode}
-                  onChangeText={setPincode}
+                  value={state}
+                  onChangeText={setState}
                 />
               </View>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder={isTamil ? '6 இலக்க அஞ்சல் குறியீடு *' : '6-digit Pincode *'}
+                placeholderTextColor="#8A9E92"
+                keyboardType="numeric"
+                maxLength={6}
+                value={pincode}
+                onChangeText={setPincode}
+              />
 
               <TouchableOpacity
                 style={[styles.saveBtn, isSaving ? styles.btnDisabled : null]}
@@ -327,7 +393,7 @@ export const AddressesScreen = () => {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Success Celebration Modal Matching User Mockup */}
@@ -452,6 +518,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  backdropDismiss: {
+    flex: 1,
+    width: '100%',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
@@ -461,8 +531,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    maxHeight: '90%',
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.lg,
+    paddingBottom: Platform.OS === 'ios' ? 24 : SPACING.md,
+  },
+  scrollContent: {
+    paddingBottom: 28,
   },
   modalHeader: {
     flexDirection: 'row',
