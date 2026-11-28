@@ -90,6 +90,7 @@ backend/*.key
 # Build and local test artifacts
 *.apk
 *.aab
+*.zip
 *.png
 !src/**/*.png
 !android/**/*.png
